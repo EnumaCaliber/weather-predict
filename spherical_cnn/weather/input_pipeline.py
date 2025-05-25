@@ -19,6 +19,8 @@ import grain.python as grain
 import jax
 import ml_collections
 import numpy as np
+from pyasn1_modules.rfc5990 import id_aes256_Wrap
+
 from spherical_cnn.weather import input_pipeline_stats
 # This is needed to be able load the custom tfds dataset.
 import spherical_cnn.weather.data.era5  # pylint: disable=unused-import
@@ -184,16 +186,45 @@ class WeatherBatchOperation(grain.BatchOperation):
           predictors[batch_i, ..., id0:id1] = input_record.data[
               field
           ].transpose(2, 1, 0)
+        # calculation the rho
+        R = 287.05  # J/(kg·K) dry air
+        pressure = input_record.data['pressure']  # shape: (1, lon, lat)
+        temperature = input_record.data['temperature']
+        pressure_broadcasted = np.broadcast_to(pressure, temperature.shape)
+        density = pressure_broadcasted / (R * temperature)
+        density = density.transpose(2, 1, 0)
+        id0 = id1
+        id1 = id0 + 13
+        predictors[batch_i, ..., id0:id1] = density.astype(np.float32)
+
+
         # Add constants last:
         if time_i == self.num_predictor_times - 1:
           id0 = id1
           id1 = id0 + 1
+
           # TODO(machc): This assumes only one time sample for predictors. If we
           # want more than one we should take all samples of solar radiation and
           # add at the end to play well with unrolling.
           predictors[batch_i, ..., id0:id1] = input_record.data[
               'toa_incident_solar_radiation'
           ].transpose(2, 1, 0)
+          id0 = id1
+          id1 = id0 + 1
+          predictors[batch_i, ..., id0:id1] = input_record.data[
+              'surface_pressure'
+          ].transpose(2, 1, 0)
+          id0 = id1
+          id1 = id0 + 1
+          predictors[batch_i, ..., id0:id1] = input_record.data[
+              'mean_sea_level_pressure'
+          ].transpose(2, 1, 0)
+          id0 = id1
+          id1 = id0 + 1
+          predictors[batch_i, ..., id0:id1] = input_record.data[
+              'total_column_water_vapour'
+          ].transpose(2, 1, 0)
+
           # TODO
           constants = _get_constants(self.metadata, with_longitude=True)
           time_features = _encode_time(
