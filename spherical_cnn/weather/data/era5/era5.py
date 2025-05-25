@@ -102,9 +102,12 @@ KEISLER22_BASE_CONFIG = dict(
         u_component_of_wind=ALL_LEVELS,
         v_component_of_wind=ALL_LEVELS,
         vertical_velocity=ALL_LEVELS,
-        toa_incident_solar_radiation=(),
+        toa_incident_solar_radiation=(),# for more accuracy
+        surface_pressure=(),
+        mean_sea_level_pressure=(),
+        total_column_water_vapour=(),
     ),
-    years=tuple(range(1979, 2021)),
+    years=tuple(range(1979, 2022)),
 )
 
 
