@@ -14,7 +14,8 @@ VARIABLES = [
     "temperature",
     "surface_pressure",
     "vertical_velocity",
-    "specific_humidity"
+    "specific_humidity",
+    "geopotential"
 ]
 
 
