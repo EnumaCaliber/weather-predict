@@ -29,29 +29,21 @@ def dz(wind1, wind2, high_diff):
     return (wind1 - wind2) / (high_diff)
 
 util = get_point_parameters(file_path)
-lat_dis = util.get_lat_distance(level=850)
-lon_dis = util.get_lon_distance(level=850)
-u1 = util.get_wind_u(level=850)
-u2 = util.get_wind_u(level=925)
-v1 = util.get_wind_v(level=850)
-v2 = util.get_wind_v(level=925)
-w1= util.get_wind_w(level=850)
-w2 = util.get_wind_w(level=925)
-high_diff = util.get_high_diff(level1=850,level2=925)
 
 
-du_dx = d_lon(u1, lon_dis)
-du_dy = d_lat(u1, lat_dis)
-du_dz = dz(u1, u2, high_diff)
+
+du_dx = util.wind_d_x(level=850, wind_type ="u")
+du_dy = util.wind_d_y(level=850, wind_type ="u")
+du_dz = util.wind_d_z(level=[850,925], wind_type ="u")
 
 
-dv_dx = d_lat(v1, lon_dis)
-dv_dy = d_lon(v1, lat_dis)
-dv_dz = dz(v1, v2, high_diff)
+dv_dx = util.wind_d_x(level=850, wind_type ="v")
+dv_dy = util.wind_d_y(level=850, wind_type ="v")
+dv_dz = util.wind_d_z(level=[850,925], wind_type ="v")
 
-dw_dx = d_lon(w1, lon_dis)
-dw_dy = d_lat(w1, lat_dis)
-dw_dz = dz(w1, w2, high_diff)
+dw_dx = util.wind_d_x(level=850, wind_type ="v")
+dw_dy = util.wind_d_y(level=850, wind_type ="v")
+dw_dz = util.wind_d_z(level=[850,925], wind_type ="v")
 
-
+draw(dw_dx)
 

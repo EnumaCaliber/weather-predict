@@ -122,7 +122,56 @@ class get_point_parameters:
         level = self.ds["level"].values
         return level
 
+    # lon
+    def wind_d_x(self, level, wind_type):
 
+        lon_dis = self.get_lon_distance(level=level)
+        if wind_type == "u":
+            wind = self.get_wind_u(level=level)
+        elif wind_type == "v":
+            wind = self.get_wind_v(level=level)
+        else:
+            wind = self.get_wind_w(level=level)
+        dx = np.zeros_like(wind)
+        dx = (np.roll(wind, -1, axis=0) - np.roll(wind, 1, axis=0)) / (2 * lon_dis)
+        return dx
+
+
+    # lat
+    def wind_d_y(self, level, wind_type):
+        lat_dis = self.get_lat_distance(level=level)
+        if wind_type == "u":
+            wind = self.get_wind_u(level=level)
+        elif wind_type == "v":
+            wind = self.get_wind_v(level=level)
+        else:
+            wind = self.get_wind_w(level=level)
+        dy = np.zeros_like(wind)
+        # 中心差分（内部点）
+        dy[:, 1:-1] = (wind[:, 2:] - wind[:, :-2]) / (2 * lat_dis)
+        # 前向差分（南边界）
+        dy[:, 0] = (wind[:, 1] - wind[:, 0]) / lat_dis
+        # 后向差分（北边界）
+        dy[:, -1] = (wind[:, -1] - wind[:, -2]) / lat_dis
+        return dy
+
+    # this level should be two level [level1, level2]
+    def wind_d_z(self, level, wind_type):
+        level.sort()
+        level1 = level[0]
+        level2 = level[1]
+        high_diff = self.get_high_diff(level1=level1,level2=level2)
+        if wind_type == "u":
+            wind1 = self.get_wind_u(level=level1)
+            wind2 = self.get_wind_u(level=level2)
+        elif wind_type == "v":
+            wind1 = self.get_wind_v(level=level1)
+            wind2 = self.get_wind_v(level=level2)
+        else:
+            wind1 = self.get_wind_w(level=level1)
+            wind2 = self.get_wind_w(level=level2)
+        dz = (wind1 - wind2) / (high_diff)
+        return dz
 
 
 
