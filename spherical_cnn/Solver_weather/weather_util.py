@@ -1,6 +1,3 @@
-from shapely.measurement import distance
-from sympy.simplify import fu
-from wrf import getvar, interplevel
 import xarray as xr
 import numpy as np
 
@@ -120,3 +117,13 @@ class get_point_parameters:
         ds = self.ds.sel(level=level)
         w = ds["vertical_velocity"].values
         return w
+
+    def get_level(self):
+        level = self.ds["level"].values
+        return level
+
+
+
+
+
+
