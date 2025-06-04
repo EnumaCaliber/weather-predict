@@ -34,11 +34,12 @@ util = get_point_parameters(file_path)
 lat_dis = util.get_lat_distance(level=850)
 lon_dis = util.get_lon_distance(level=850)
 u = util.get_wind_u(level=850)
+v = util.get_wind_v(level=850)
 
 dudx = d_lon(u, lon_dis)
 dudy = d_lat(u, lat_dis)
-
-
+dvdx = d_lat(v, lon_dis)
+dvdy = d_lon(v, lat_dis)
 scale = 1e6
 
 plt.figure(figsize=(14, 5))
@@ -54,6 +55,17 @@ plt.subplot(1, 2, 2)
 plt.imshow(dudy.T * scale, origin='lower', cmap='bwr')
 plt.colorbar(label=f"∂u/∂y × {int(scale)} [1e-6 s⁻¹]")
 plt.title("∂u/∂y")
+
+plt.subplot(2, 2, 1)
+plt.imshow(dvdx.T * scale, origin='lower', cmap='bwr')
+plt.colorbar(label=f"∂v/∂y × {int(scale)} [1e-6 s⁻¹]")
+plt.title("∂v/∂y")
+
+plt.subplot(2, 2, 2)
+plt.imshow(dvdy.T * scale, origin='lower', cmap='bwr')
+plt.colorbar(label=f"∂v/∂y × {int(scale)} [1e-6 s⁻¹]")
+plt.title("∂v/∂y")
+
 
 plt.tight_layout()
 plt.show()
