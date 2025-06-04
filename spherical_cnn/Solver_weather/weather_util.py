@@ -4,7 +4,6 @@ from wrf import getvar, interplevel
 import xarray as xr
 import numpy as np
 
-from spherical_cnn.Solver_weather.weather_predict import ds_100
 
 # constant define
 R = 287.0
@@ -107,4 +106,17 @@ class get_point_parameters:
         distance = delta_lon * 2 * np.pi *  EARTH_RADIUS_M / 360
         return distance
 
+    def get_wind_u(self,level):
+        ds = self.ds.sel(level=level)
+        u = ds["u_component_of_wind"].values
+        return u
 
+    def get_wind_v(self,level):
+        ds = self.ds.sel(level=level)
+        v = ds["v_component_of_wind"].values
+        return v
+
+    def get_wind_w(self,level):
+        ds = self.ds.sel(level=level)
+        w = ds["vertical_velocity"].values
+        return w
