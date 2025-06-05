@@ -7,12 +7,13 @@ from spherical_cnn.Solver_weather.weather_util import get_point_parameters
 from pic_util import *
 
 
-file_path = "era5_20200601_12.nc"
+file_path_1 = "era5_20200601_12_1.nc"
+
+diffusion_coefficient_flat = 1000
+diffusion_coefficient_vertical = 5
 
 
-
-
-util = get_point_parameters(file_path)
+util = get_point_parameters(file_path_1)
 
 lon = util.get_lon(level=850)
 lat = util.get_lat(level=850)
@@ -20,13 +21,16 @@ u = util.get_wind_u(level=850)
 du_dx = util.d_x(level=850, wind_type ="u")
 du_dy = util.d_y(level=850, wind_type ="u")
 du_dz = util.d_z(level=[850,925], wind_type ="u")
-
-
+du_dz_2 = util.d_z(level=[925,1000], wind_type ="u")
+du_ddz = util.dd_z(level=[850,925],du1=du_dz,du2=du_dz_2)
 
 v = util.get_wind_v(level=850)
 dv_dx = util.d_x(level=850, wind_type ="v")
 dv_dy = util.d_y(level=850, wind_type ="v")
 dv_dz = util.d_z(level=[850,925], wind_type ="v")
+
+
+
 
 w = util.get_wind_v(level=850)
 dw_dx = util.d_x(level=850, wind_type ="v")
@@ -43,21 +47,28 @@ u_advection = -(u * du_dx + v * du_dy + w * du_dz)
 dp_dx = util.d_x(level=850, wind_type ="p")
 rho = util.get_rho(level=850)
 
-PGF = -(1/rho)*dp_dx
 
-coriolis = util.get_v_coriolis(level=850)
 du_ddx = util.dd_x(dx = du_dx,level=850)
 du_ddy = util.dd_y(dy = du_dy,level=850)
-#TODO
-du_ddz = du_ddy*np.random.randn()
 
-# TODO
-total = u_advection + PGF + coriolis + du_ddx + du_ddy + du_ddz
-
-
+# function construction
+PGF = -(1/rho)*dp_dx
+coriolis = util.get_v_coriolis(level=850)
+diffusion = diffusion_coefficient_flat * (du_ddx + du_ddy) +  diffusion_coefficient_vertical*du_ddz
 
 
-u100 = u + total * 100
 
-draw(u, lon=lon, lat=lat, scale=1)
-draw(u100, lon=lon, lat=lat, scale=1)
+total = u_advection + PGF + coriolis + diffusion
+
+
+file_path_2 = "era5_20200601_12_2.nc"
+util_2 = get_point_parameters(file_path_2)
+u_t2 = util_2.get_wind_u(level=850)
+
+du_dt = (u_t2 - u)/3600
+
+residual = du_dt - total
+
+
+
+draw(residual, lon=lon, lat=lat, scale=1)

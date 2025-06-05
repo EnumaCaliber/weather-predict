@@ -3,7 +3,7 @@ import xarray as xr
 import numpy as np
 # 地球参数
 
-file_path = "era5_20200601_12.nc"
+file_path = "era5_20200601_12_1.nc"
 # 读取 ERA5 数据
 ds = xr.open_dataset(file_path)
 ds_850 = ds.sel(level=850)
@@ -23,4 +23,4 @@ lon = ds["longitude"].values  # shape: (64,)
 lat = np.tile(lat[:, np.newaxis], (1, 32))
 po = ds_850["geopotential"].values / 9.8
 
-print(ds.data_vars)
+print(ds["level"].values)

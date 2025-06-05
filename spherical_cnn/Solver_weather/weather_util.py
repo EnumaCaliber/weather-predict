@@ -204,9 +204,14 @@ class get_point_parameters:
         ddy[:, -1] = (dy[:, -1] - dy[:, -2]) / lat_dis
         return ddy
 
-    #TODO
-    def dd_z(self, dz,level):
-        return 0
+    #du1 low level du2 high level
+    def dd_z(self, level, du1,du2):
+        level.sort()
+        level1 = level[0]
+        level2 = level[1]
+        high_diff = self.get_high_diff(level1=level1,level2=level2)
+        dz = (du1 - du2) / (high_diff)
+        return dz
 
 
     def get_true_pressure(self,level):
