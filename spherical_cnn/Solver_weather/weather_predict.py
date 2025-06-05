@@ -67,7 +67,7 @@ u_t2 = util_2.get_wind_u(level=850)
 
 du_dt = (u_t2 - u)/3600
 
-residual = du_dt - total
+residual = abs(du_dt) - abs(total)
 
 
 
