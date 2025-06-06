@@ -16,6 +16,7 @@ class get_point_parameters:
         self.sin_alpha = 0
         self.omega = 7.2921e-5
         self.g = 9.80665
+
     def get_rho(self,level):
         ds = self.ds.sel(level=level)
         q = ds["specific_humidity"].values # specific_humidity
@@ -41,9 +42,7 @@ class get_point_parameters:
 
 
         ##########################
-        w = ds["vertical_velocity"].values
-        rho = self.get_rho(level)
-        w = - w / (rho * self.g)
+        w = self.get_wind_u(level=level)
         ##########################
 
         lat = np.tile(lat[np.newaxis, :], (lon_size, 1))
@@ -58,9 +57,7 @@ class get_point_parameters:
 
         # 读取变量
         v = ds["v_component_of_wind"].values  # shape: (lon, lat) 确保！
-        w = ds["vertical_velocity"].values
-        rho = self.get_rho(level)
-        w = - w / (rho * self.g)
+        w = self.get_wind_u(level = level)
 
         # 经纬网格生成
         lon = ds["longitude"].values
@@ -80,11 +77,12 @@ class get_point_parameters:
         lat = ds["latitude"].values
         lat = np.tile(lat[np.newaxis, :], (lon, 1))
 
+        lat_rad = np.deg2rad(lat)
         u = ds["u_component_of_wind"].values
         w = ds["vertical_velocity"].values
-        fu = 2 * self.omega * np.sin(lat) * u
-        ew = 2 * self.omega * np.cos(lat) * w * self.sin_alpha
-        fw = 2 * self.omega * np.sin(lat) * w * self.cos_alpha
+        fu = 2 * self.omega * np.sin(lat_rad) * u
+        ew = 2 * self.omega * np.cos(lat_rad) * w * self.sin_alpha
+        fw = 2 * self.omega * np.sin(lat_rad) * w * self.cos_alpha
         return (- fu + ew + fw)
 
     def get_w_coriolis(self,level):

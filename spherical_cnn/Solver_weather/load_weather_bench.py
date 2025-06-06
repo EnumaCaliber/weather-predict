@@ -6,7 +6,7 @@ import numpy as np
 GCS_PATH = "gs://weatherbench2/datasets/era5/1959-2022-1h-240x121_equiangular_with_poles_conservative.zarr/"
 # 目标时间点
 # TARGET_TIME = np.datetime64("2020-06-01T12:00:00")
-TARGET_TIME = np.datetime64("2021-12-31T22:00:00.000000000")
+TARGET_TIME = np.datetime64("2021-12-31T20:00:00.000000000")
 # 需要读取的变量
 VARIABLES = [
     "u_component_of_wind",
@@ -33,6 +33,6 @@ for var in VARIABLES:
     else:
         print(f"变量 {var} 不在数据集中")
 
-output_path = "era5_20200601_12_2.nc"
+output_path = "era5_20200601_12_3.nc"
 ds_sel[VARIABLES].to_netcdf(output_path)
 print(f"已保存为 NetCDF 文件：{output_path}")
