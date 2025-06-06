@@ -44,8 +44,6 @@ class get_point_parameters:
         w = ds["vertical_velocity"].values
         rho = self.get_rho(level)
         w = - w / (rho * self.g)
-        print("w")
-        draw(w,lon = lon , lat = lat,scale=1,title=f"w")
         ##########################
 
         lat = np.tile(lat[np.newaxis, :], (lon_size, 1))
@@ -53,8 +51,6 @@ class get_point_parameters:
         fv = 2 * self.omega * np.sin(lat_rad) * v
         ew = 2 * self.omega * np.cos(lat_rad) * w * self.cos_alpha
         fw = 2 * self.omega * np.sin(lat_rad) * w * self.sin_alpha
-        draw(fv, lon=lon, lat=lat, scale=1, title="fv")
-        draw(ew, lon=lon, lat=lat, scale=1, title="ew")
         return (fv + ew + fw)
 
     def get_u_coriolis_force_mesh(self, level):
@@ -76,11 +72,6 @@ class get_point_parameters:
         fv = 2 * self.omega * np.sin(lat_rad) * v
         ew = 2 * self.omega * np.cos(lat_rad) * w * self.cos_alpha
         fw = 2 * self.omega * np.sin(lat_rad) * w * self.sin_alpha
-
-        # 可视化
-        draw(fv, lon=lon, lat=lat, scale=1, title="fv")
-        draw(ew, lon=lon, lat=lat, scale=1, title="ew")
-
         return fv + ew + fw
 
     def get_v_coriolis_force(self,level):
@@ -100,9 +91,11 @@ class get_point_parameters:
         ds = self.ds.sel(level=level)
         u = ds["u_component_of_wind"].values
         v = ds["v_component_of_wind"].values
+        lon = ds["longitude"].values
         lat = ds["latitude"].values
-        lat = np.tile(lat[:, np.newaxis], (1, 32))
-        coriolis_force = 2 * self.omega * np.cos(lat) * (u * self.cos_alpha + v * self.sin_alpha)
+        lat = np.tile(lat[:, np.newaxis], (1, len(lon)))
+        lat_rad = np.deg2rad(lat)
+        coriolis_force = 2 * self.omega * np.cos(lat_rad) * (u * self.cos_alpha + v * self.sin_alpha)
         return (- coriolis_force)
 
     def get_high_meter(self,level):
@@ -177,10 +170,6 @@ class get_point_parameters:
         ############
         return w
 
-    def get_level(self):
-        level = self.ds["level"].values
-        return level
-
     # lon
     def d_x(self, level, wind_type):
 
@@ -190,11 +179,7 @@ class get_point_parameters:
         elif wind_type == "v":
             wind = self.get_wind_v(level=level)
         elif wind_type == "w":
-            ########################
             wind = self.get_wind_w(level=level)
-            rho = self.get_rho(level)
-            wind = - wind / (rho * self.g)
-            ########################
         elif wind_type == "p":
             wind = self.get_true_pressure(level=level)
             print("pressure")
@@ -215,11 +200,7 @@ class get_point_parameters:
         elif wind_type == "v":
             wind = self.get_wind_v(level=level)
         elif wind_type == "w":
-            ####################
             wind = self.get_wind_w(level=level)
-            rho = self.get_rho(level)
-            wind = - wind / (rho * self.g)
-            ####################
         elif wind_type == "uv":
             wind = self.get_wind_u(level=level) * self.get_wind_v(level=level)
             print("uv")
@@ -246,23 +227,12 @@ class get_point_parameters:
             wind1 = self.get_wind_v(level=level1)
             wind2 = self.get_wind_v(level=level2)
         elif wind_type == "w":
-            #########################################
-            rho1 = self.get_rho(level=level1)
             wind1 = self.get_wind_w(level=level1)
-            wind1 = - wind1 / (rho1 * self.g)
-            rho2 = self.get_rho(level=level2)
             wind2 = self.get_wind_w(level=level2)
-            wind2 = - wind2 / (rho2 * self.g)
-            #########################################
         elif wind_type == "uw":
-            rho1 = self.get_rho(level=level1)
             w1 = self.get_wind_w(level=level1)
-            w1 = - w1 / (rho1 * self.g)
             wind1 = self.get_wind_u(level=level1) * w1
-
-            rho2 = self.get_rho(level=level2)
             w2 = self.get_wind_w(level=level2)
-            w2 = - w2 / (rho2 * self.g)
             wind2 = self.get_wind_u(level=level2) * w2
             print("uw")
         dz = (wind1 - wind2) / (high_diff)
