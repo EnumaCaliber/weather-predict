@@ -54,22 +54,27 @@ p_true = util.get_true_pressure(level=850)
 
 u_advection = -(duu_dx + duv_dy + duw_dz)
 dp_dx = util.d_x(level=850, wind_type ="p")
+p_gradient = - util.get_geopotential_dx(level=850) * 9.8
+
+
 rho = util.get_rho(level=850)
 
 
 du_ddx = util.dd_x(dx = du_dx,level=850)
+# 存在条纹
 du_ddy = util.dd_y(dy = du_dy,level=850)
 
 # function construction
 PGF = -( 1 / rho) * dp_dx
+# 存在条纹
 coriolis = util.get_u_coriolis_force(level=850)
 diffusion = diffusion_coefficient_flat * (du_ddx + du_ddy) +  diffusion_coefficient_vertical*du_ddz
 
 
 
 
-total = u_advection + PGF + coriolis + diffusion
-
+# total = u_advection + PGF + coriolis + diffusion
+total = u_advection  - 9.8 * p_gradient + coriolis + diffusion
 
 file_path_2 = "era5_20200601_12_2.nc"
 util_2 = get_point_parameters(file_path_2)
@@ -79,10 +84,6 @@ du_dt = ((u + u_t2)/2 - u) / (1800)
 
 
 
-
-
-
-draw(total, lon=lon, lat=lat,scale=1)
-draw(du_dt, lon=lon, lat=lat,scale=1)
+draw(total, lon=lon, lat=lat,scale=1,title="total")
 
 
