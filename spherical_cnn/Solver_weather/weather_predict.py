@@ -75,7 +75,7 @@ diffusion = diffusion_coefficient_flat * (du_ddx + du_ddy) +  diffusion_coeffici
 
 # total = u_advection + PGF + coriolis + diffusion
 total = u_advection  - 9.8 * p_gradient + coriolis + diffusion
-
+total_2 = u_advection  + PGF + coriolis + diffusion
 file_path_2 = "era5_20200601_12_2.nc"
 util_2 = get_point_parameters(file_path_2)
 u_t2 = util_2.get_wind_u(level=850)
@@ -85,5 +85,6 @@ du_dt = ((u + u_t2)/2 - u) / (1800)
 
 
 draw(total, lon=lon, lat=lat,scale=1,title="total")
-
+draw(total_2, lon=lon, lat=lat,scale=1,title="total_2")
+draw(du_dt, lon=lon, lat=lat,scale=1,title="du_dt")
 

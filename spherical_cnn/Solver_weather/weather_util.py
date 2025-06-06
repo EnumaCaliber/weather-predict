@@ -32,37 +32,32 @@ class get_point_parameters:
         T_virtual = T * (1 + 0.61 * q)
         return T_virtual
 
-    # def get_u_coriolis_force(self,level):
-    #     ds = self.ds.sel(level=level)
-    #     lon_size = ds["longitude"].values.size
-    #     lon = ds["longitude"].values
-    #     lat = ds["latitude"].values
-    #     v = ds["v_component_of_wind"].values
-    #
-    #
-    #     ##########################
-    #     w = ds["vertical_velocity"].values
-    #     rho = self.get_rho(level)
-    #     w = - w / (rho * self.g)
-    #     print("w")
-    #     draw(w,lon = lon , lat = lat,scale=1,title=f"w")
-    #     ##########################
-    #
-    #     lat = np.tile(lat[np.newaxis, :], (lon_size, 1))
-    #
-    #     fv = 2 * self.omega * np.sin(lat) * v
-    #     print("fv")
-    #     draw(fv,lon = lon , lat = lat,scale=1,title=f"fv")
-    #
-    #     ew = 2 * self.omega * np.cos(lat) * w * self.cos_alpha
-    #
-    #     print("ew")
-    #     draw(ew,lon = lon , lat = lat,scale=1)
-    #
-    #     fw = 2 * self.omega * np.sin(lat) * w * self.sin_alpha
-    #     return (fv + ew + fw)
+    def get_u_coriolis_force(self,level):
+        ds = self.ds.sel(level=level)
+        lon_size = ds["longitude"].values.size
+        lon = ds["longitude"].values
+        lat = ds["latitude"].values
+        v = ds["v_component_of_wind"].values
 
-    def get_u_coriolis_force(self, level):
+
+        ##########################
+        w = ds["vertical_velocity"].values
+        rho = self.get_rho(level)
+        w = - w / (rho * self.g)
+        print("w")
+        draw(w,lon = lon , lat = lat,scale=1,title=f"w")
+        ##########################
+
+        lat = np.tile(lat[np.newaxis, :], (lon_size, 1))
+        lat_rad = np.deg2rad(lat)
+        fv = 2 * self.omega * np.sin(lat_rad) * v
+        ew = 2 * self.omega * np.cos(lat_rad) * w * self.cos_alpha
+        fw = 2 * self.omega * np.sin(lat_rad) * w * self.sin_alpha
+        draw(fv, lon=lon, lat=lat, scale=1, title="fv")
+        draw(ew, lon=lon, lat=lat, scale=1, title="ew")
+        return (fv + ew + fw)
+
+    def get_u_coriolis_force_mesh(self, level):
         ds = self.ds.sel(level=level)
 
         # 读取变量
@@ -145,7 +140,7 @@ class get_point_parameters:
         delta_lon = lon[1] - lon[0]
         # distance = delta_lon * 2 * np.pi *  EARTH_RADIUS_M / 360
 
-        distance = delta_lon * 2 * np.pi * EARTH_RADIUS_M * np.cos(45) / 360
+        distance = delta_lon * 2 * np.pi * EARTH_RADIUS_M / 360
         return abs(distance)
 
     def get_lon(self,level):

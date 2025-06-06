@@ -1,5 +1,5 @@
 import numpy as np
-arr = np.array([10, 20, 30, 40, 50])
 
-l = np.roll(arr, -1)
-print(l)
+
+
+print(np.sin(30))
