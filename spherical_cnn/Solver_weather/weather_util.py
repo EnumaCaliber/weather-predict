@@ -9,9 +9,11 @@ P = 85000
 
 class get_point_parameters:
     def __init__(self, file_path):
-        self.file_path = file_path
-        self.ds = xr.open_dataset(file_path)
-
+        if isinstance(file_path, str):
+            self.file_path = file_path
+            self.ds = xr.open_dataset(file_path)
+        else:
+            self.ds = file_path
         self.cos_alpha = 1
         self.sin_alpha = 0
         self.omega = 7.2921e-5
