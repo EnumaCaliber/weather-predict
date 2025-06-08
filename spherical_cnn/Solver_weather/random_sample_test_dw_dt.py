@@ -45,11 +45,11 @@ for time_index in range(0,100,2):
     ##########diffusion##########
     dw_dx = util_curr.d_x(level=850, wind_type="w")
     dw_dy = util_curr.d_y(level=850, wind_type="w")
-    dw_dz = util_curr.d_z(level=[850, 875], wind_type="w")
-    dw_dz_2 = util_curr.d_z(level=[875, 900], wind_type="w")
+    dw_dz = util_curr.d_z(level=[825, 875], wind_type="w")
+    dw_dz_2 = util_curr.d_z(level=[825, 900], wind_type="w")
     dw_ddx = util_curr.dd_x(dx=dw_dx, level=850)
     dw_ddy = util_curr.dd_y(dy=dw_dy, level=850)
-    dw_ddz = util_curr.dd_z(level=[850, 875], du1=dw_dz, du2=dw_dz_2)
+    dw_ddz = util_curr.dd_z(level=[825, 875], du1=dw_dz, du2=dw_dz_2)
     diffusion = diffusion_coefficient_flat * (dw_ddx + dw_ddy) + diffusion_coefficient_vertical * dw_ddz
     ##########diffusion##########
 
