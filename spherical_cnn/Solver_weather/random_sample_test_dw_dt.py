@@ -57,8 +57,7 @@ for time_index in range(0,100,2):
     gravity_term = -g * np.ones_like(w_advection)
     lon = util_curr.get_lon(level=850)
     lat = util_curr.get_lat(level=850)
-    dw_dt_exp = w_advection  + diffusion + gravity_term + coriolis + PGF
-
+    dw_dt_exp = w_advection  + diffusion + coriolis+ PGF + gravity_term
     ##########dudt##########
 
     ##########dudt true##########
@@ -69,8 +68,8 @@ for time_index in range(0,100,2):
 
 
     if time_index == 98:
-        draw(dw_dt_exp, lon=lon, lat=lat,scale=1,title="dw_dt")
-        draw(dw_dt_true, lon=lon, lat=lat,scale=1,title="dw_dt")
+        draw(dw_dt_exp, lon=lon, lat=lat,scale=1,title="dw_dt_exp")
+        draw(dw_dt_true, lon=lon, lat=lat,scale=1,title="dw_dt_true")
     residual = dw_dt_true - dw_dt_exp
     residuals.append(residual.flatten())
 
