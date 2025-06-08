@@ -44,7 +44,7 @@ class get_point_parameters:
 
 
         ##########################
-        w = self.get_wind_u(level=level)
+        w = self.get_wind_w(level=level)
         ##########################
 
         lat = np.tile(lat[np.newaxis, :], (lon_size, 1))
@@ -59,7 +59,7 @@ class get_point_parameters:
 
         # 读取变量
         v = ds["v_component_of_wind"].values  # shape: (lon, lat) 确保！
-        w = self.get_wind_u(level = level)
+        w = self.get_wind_w(level = level)
 
         # 经纬网格生成
         lon = ds["longitude"].values
@@ -79,21 +79,22 @@ class get_point_parameters:
         lat = ds["latitude"].values
         lat = np.tile(lat[np.newaxis, :], (lon, 1))
 
-        lat_rad = np.deg2rad(lat)
+
         u = ds["u_component_of_wind"].values
-        w = ds["vertical_velocity"].values
+        w = self.get_wind_w(level = level)
+        lat_rad = np.deg2rad(lat)
         fu = 2 * self.omega * np.sin(lat_rad) * u
         ew = 2 * self.omega * np.cos(lat_rad) * w * self.sin_alpha
         fw = 2 * self.omega * np.sin(lat_rad) * w * self.cos_alpha
         return (- fu + ew + fw)
 
-    def get_w_coriolis(self,level):
+    def get_w_coriolis_force(self,level):
         ds = self.ds.sel(level=level)
         u = ds["u_component_of_wind"].values
         v = ds["v_component_of_wind"].values
-        lon = ds["longitude"].values
+        lon = ds["longitude"].values.size
         lat = ds["latitude"].values
-        lat = np.tile(lat[:, np.newaxis], (1, len(lon)))
+        lat = np.tile(lat[np.newaxis, :], (lon, 1))
         lat_rad = np.deg2rad(lat)
         coriolis_force = 2 * self.omega * np.cos(lat_rad) * (u * self.cos_alpha + v * self.sin_alpha)
         return (- coriolis_force)
@@ -111,7 +112,7 @@ class get_point_parameters:
         geopotential1 = ds_level1["geopotential"].values
         geopotential2 = ds_level2["geopotential"].values
 
-        high_diff = abs((geopotential1 - geopotential2) / self.g)
+        high_diff = (geopotential2 - geopotential1) / self.g
         return high_diff
 
 
@@ -145,8 +146,6 @@ class get_point_parameters:
         ds = self.ds.sel(level=level)
         lat = ds["latitude"].values
         return lat
-
-
 
 
     def get_wind_u(self,level):
@@ -183,9 +182,13 @@ class get_point_parameters:
         elif wind_type == "p":
             wind = self.get_true_pressure(level=level)
             print("pressure")
-        else:
+        elif wind_type == "uu":
             wind = self.get_wind_u(level=level) * self.get_wind_u(level=level)
             print("uu")
+        elif wind_type == "vu":
+            wind = self.get_wind_v(level=level) * self.get_wind_u(level=level)
+        elif wind_type == "wu":
+            wind = self.get_wind_w(level=level) * self.get_wind_u(level=level)
         dx = np.zeros_like(wind)
         dx = (np.roll(wind, -1, axis=0) - np.roll(wind, 1, axis=0)) / (2 * lon_dis)
         print("lon_dis:f{}",lon_dis)
@@ -201,9 +204,15 @@ class get_point_parameters:
             wind = self.get_wind_v(level=level)
         elif wind_type == "w":
             wind = self.get_wind_w(level=level)
+        elif wind_type == "p":
+            wind = self.get_true_pressure(level=level)
         elif wind_type == "uv":
             wind = self.get_wind_u(level=level) * self.get_wind_v(level=level)
             print("uv")
+        elif wind_type == "vv":
+            wind = self.get_wind_v(level=level) * self.get_wind_v(level=level)
+        elif wind_type == "wv":
+            wind = self.get_wind_w(level=level) * self.get_wind_v(level=level)
         dy = np.zeros_like(wind)
         # 中心差分（内部点）
         dy[:, 1:-1] = (wind[:, 2:] - wind[:, :-2]) / (2 * lat_dis)
@@ -229,13 +238,26 @@ class get_point_parameters:
         elif wind_type == "w":
             wind1 = self.get_wind_w(level=level1)
             wind2 = self.get_wind_w(level=level2)
+        elif wind_type == "p":
+            wind1 = self.get_true_pressure(level=level1)
+            wind2 = self.get_true_pressure(level=level2)
         elif wind_type == "uw":
             w1 = self.get_wind_w(level=level1)
             wind1 = self.get_wind_u(level=level1) * w1
             w2 = self.get_wind_w(level=level2)
             wind2 = self.get_wind_u(level=level2) * w2
             print("uw")
-        dz = (wind1 - wind2) / (high_diff)
+        elif wind_type == "vw":
+            w1 = self.get_wind_w(level=level1)
+            wind1 = self.get_wind_v(level=level1) * w1
+            w2 = self.get_wind_w(level=level2)
+            wind2 = self.get_wind_v(level=level2) * w2
+        else:
+            w1 = self.get_wind_w(level=level1)
+            wind1 = w1 * w1
+            w2 = self.get_wind_w(level=level2)
+            wind2 = w2 * w2
+        dz = (wind2 - wind1) / high_diff
         return dz
 
 
@@ -293,3 +315,28 @@ class get_point_parameters:
         dz_dx[-1, :] = (height[-1, :] - height[-2, :]) / lon_dis
 
         return dz_dx  # 单位：m/m
+
+    def compute_dp_dz(self, level):
+        """
+        Approximate ∂p/∂z using finite difference between two pressure levels.
+        """
+        ds = self.ds
+        p1= level[0]
+        p2 = level[1]
+        ds1 = ds.sel(level=p1)
+        ds2 = ds.sel(level=p2)
+
+        # 单位转换为 Pa（如果是 hPa）
+
+        p1_Pa = ds1["level"].values
+        p2_Pa = ds2["level"].values
+
+        delta_p = abs((p2_Pa - p1_Pa) * 100 )  # scalar: pressure difference
+
+        z1 = ds1["geopotential"].values / 9.80665  # convert from geopotential to meters
+        z2 = ds2["geopotential"].values / 9.80665
+        delta_z = z2 - z1  # shape: (lon, lat)
+
+        dp_dz = delta_p / delta_z  # shape: (lon, lat)
+
+        return dp_dz

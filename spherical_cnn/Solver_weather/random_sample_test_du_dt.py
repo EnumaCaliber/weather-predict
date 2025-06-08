@@ -27,7 +27,7 @@ for time_index in range(0,100,2):
     ##########u_advection##########
     duu_dx = util_curr.d_x(level=850, wind_type ="uu")
     duv_dy = util_curr.d_y(level=850, wind_type ="uv")
-    duw_dz = util_curr.d_z(level=[850,925], wind_type ="uw")
+    duw_dz = util_curr.d_z(level=[850,975], wind_type ="uw")
     u_advection = -(duu_dx + duv_dy + duw_dz)
     ##########u_advection##########
 
@@ -44,11 +44,11 @@ for time_index in range(0,100,2):
     ##########diffusion##########
     du_dx = util_curr.d_x(level=850, wind_type="u")
     du_dy = util_curr.d_y(level=850, wind_type="u")
-    du_dz = util_curr.d_z(level=[850, 925], wind_type="u")
-    du_dz_2 = util_curr.d_z(level=[925, 1000], wind_type="u")
+    du_dz = util_curr.d_z(level=[850, 875], wind_type="u")
+    du_dz_2 = util_curr.d_z(level=[850, 900], wind_type="u")
     du_ddx = util_curr.dd_x(dx=du_dx, level=850)
     du_ddy = util_curr.dd_y(dy=du_dy, level=850)
-    du_ddz = util_curr.dd_z(level=[850, 925], du1=du_dz, du2=du_dz_2)
+    du_ddz = util_curr.dd_z(level=[850, 875], du1=du_dz, du2=du_dz_2)
     diffusion = diffusion_coefficient_flat * (du_ddx + du_ddy) + diffusion_coefficient_vertical * du_ddz
     ##########diffusion##########
 
