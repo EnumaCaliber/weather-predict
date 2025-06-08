@@ -15,7 +15,7 @@ def describe(field, name):
     print(f"{name}: max={np.max(field):.5g}, min={np.min(field):.5g}, mean={np.mean(field):.5g}, std={np.std(field):.5g}")
 
 
-diffusion_coefficient_flat = 10e-6
+diffusion_coefficient_flat = 10e-5
 diffusion_coefficient_vertical = 1
 
 
@@ -85,7 +85,7 @@ total_2 = u_advection  + PGF + coriolis + diffusion
 
 u_t2 = util_2.get_wind_u(level=850)
 
-du_dt = (u_t2 - u) / (2*3600)
+du_dt = (u_t2 - u) / (3600)
 
 draw(total_2, lon=lon, lat=lat,scale=1,title="total_2")
 
