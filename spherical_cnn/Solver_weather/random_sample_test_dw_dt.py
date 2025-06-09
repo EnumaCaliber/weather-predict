@@ -39,6 +39,13 @@ for time_index in range(0,100,2):
     PGF = -( 1 / rho) * dp_dz + buoyancy
     ##########PGF##########
 
+    ##########PGF_NEW##########
+    dp_dz_new = util_curr.get_dp_dz_eta(level=850)
+    PGF_NEW = - 1/rho * dp_dz_new
+
+    # PGF_NEW = np.nan_to_num(PGF_NEW, nan=g)
+    ##########PGF_NEW##########
+
     ##########coriolis_force##########
     coriolis = util_curr.get_w_coriolis_force(level=850)
     ##########coriolis_force##########
@@ -58,7 +65,7 @@ for time_index in range(0,100,2):
     gravity_term = -g * np.ones_like(w_advection)
     lon = util_curr.get_lon(level=850)
     lat = util_curr.get_lat(level=850)
-    dw_dt_exp = w_advection  + diffusion + coriolis+ PGF + gravity_term
+    dw_dt_exp = w_advection  + diffusion + coriolis + PGF_NEW + gravity_term
     ##########dudt##########
 
     ##########dudt true##########
@@ -68,9 +75,11 @@ for time_index in range(0,100,2):
     ##########dudt true##########
 
 
+
     if time_index == 98:
         draw(dw_dt_exp, lon=lon, lat=lat,scale=1,title="dw_dt_exp")
         draw(dw_dt_true, lon=lon, lat=lat,scale=1,title="dw_dt_true")
+        draw(PGF_NEW, lon=lon, lat=lat, scale=1, title="PGF_NEW")
     residual = dw_dt_true - dw_dt_exp
     residuals.append(residual.flatten())
 

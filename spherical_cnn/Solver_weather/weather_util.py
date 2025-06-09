@@ -352,3 +352,26 @@ class get_point_parameters:
         return B
 
 
+    def eta_from_level(self, level):
+        ds = self.ds.sel(level=level)
+        pressure_k = level
+        ps = ds["surface_pressure"].values
+        p0 = 5000
+        eta_k = (pressure_k * 100 - 5000) / (ps - p0)
+        eta_k = np.where(ps >= pressure_k * 100, eta_k, np.nan)
+        return eta_k
+
+    def get_dp_dz_eta(self,level):
+        ds = self.ds.sel(level=level)
+        ps = ds["surface_pressure"].values
+        level_higher = level + 25
+        level_lower = level - 25
+
+        eta_upper = self.eta_from_level(level_higher)
+        eta_lower = self.eta_from_level(level_lower)
+        z_upper = self.ds.sel(level=level_higher)["geopotential"].values / self.g
+        z_lower = self.ds.sel(level=level_lower)["geopotential"].values / self.g
+        d_eta_dz = (eta_upper - eta_lower) / (z_upper - z_lower)
+        dp_dz = (ps - 5000) * d_eta_dz
+        dp_dz = np.where(ps >= level * 100, dp_dz, np.nan)
+        return dp_dz
