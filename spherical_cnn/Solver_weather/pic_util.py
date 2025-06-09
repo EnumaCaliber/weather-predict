@@ -53,3 +53,4 @@ def fill_nan_2d(array: np.ndarray, method: str = 'linear') -> np.ndarray:
     array_filled[nan_mask] = interp_values
 
     return array_filled
+
