@@ -341,5 +341,14 @@ class get_point_parameters:
 
         return dp_dz
 
+    def get_buoyancy(self, level):
+        ds = self.ds.sel(level=level)
+        T = ds["temperature"].values
+        T_ref = ds["2m_temperature"].values
+        Q = ds["specific_humidity"].values
+        Tv = T * (1 + 0.61 * Q)
+
+        B = self.g * (Tv - T_ref) / T_ref
+        return B
 
 

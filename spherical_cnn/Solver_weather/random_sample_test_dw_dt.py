@@ -35,7 +35,8 @@ for time_index in range(0,100,2):
     dp_dz = util_curr.d_z(level=[850,875], wind_type ="p")
     # dp_dz = util_curr.compute_dp_dz(level= [850, 925])
     rho = util_curr.get_rho(level=850)
-    PGF = -( 1 / rho) * dp_dz
+    buoyancy = util_curr.get_buoyancy(level=850)
+    PGF = -( 1 / rho) * dp_dz + buoyancy
     ##########PGF##########
 
     ##########coriolis_force##########
