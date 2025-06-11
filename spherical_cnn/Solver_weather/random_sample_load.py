@@ -26,18 +26,6 @@ seasons = {
 }
 sampled_years = random.sample(list(years), 25)
 selected_pairs = []
-# for year in sampled_years:
-#     for season_months in seasons.values():
-#         valid_times = [t for t in all_times
-#                        if (np.datetime64(t).astype("datetime64[M]").astype(int) % 12 + 1) in season_months
-#                        and (np.datetime64(t).astype("datetime64[Y]").astype(int) + 1970) == year]
-#         if len(valid_times) >= 2:
-#             t0 = random.choice(valid_times[:-1])
-#             t1 = t0 + np.timedelta64(1, "h")
-#             if t1 in all_times:
-#                 selected_pairs.append((t0, t1))
-#
-# assert len(selected_pairs) == 100
 attempts = 0
 
 while len(selected_pairs) < 100 and attempts < 10000:

@@ -5,6 +5,8 @@ from pic_util import *
 # constant define
 R = 287.0
 P = 85000
+top_model = 10
+radius = 6.371e6
 
 
 class get_point_parameters:
@@ -189,6 +191,8 @@ class get_point_parameters:
             wind = self.get_wind_v(level=level) * self.get_wind_u(level=level)
         elif wind_type == "wu":
             wind = self.get_wind_w(level=level) * self.get_wind_u(level=level)
+        elif wind_type == "urho":
+            wind = self.get_rho(level=level) * self.get_wind_u(level=level)
         dx = np.zeros_like(wind)
         dx = (np.roll(wind, -1, axis=0) - np.roll(wind, 1, axis=0)) / (2 * lon_dis)
         print("lon_dis:f{}",lon_dis)
@@ -213,6 +217,8 @@ class get_point_parameters:
             wind = self.get_wind_v(level=level) * self.get_wind_v(level=level)
         elif wind_type == "wv":
             wind = self.get_wind_w(level=level) * self.get_wind_v(level=level)
+        elif wind_type == "vrho":
+            wind = self.get_rho(level=level) * self.get_wind_v(level=level)
         dy = np.zeros_like(wind)
         # 中心差分（内部点）
         dy[:, 1:-1] = (wind[:, 2:] - wind[:, :-2]) / (2 * lat_dis)
@@ -252,6 +258,11 @@ class get_point_parameters:
             wind1 = self.get_wind_v(level=level1) * w1
             w2 = self.get_wind_w(level=level2)
             wind2 = self.get_wind_v(level=level2) * w2
+        elif wind_type == "wrho":
+            w1 = self.get_wind_w(level=level1)
+            w2 = self.get_wind_w(level=level2)
+            wind1 = self.get_rho(level=level1) * w1
+            wind2 = self.get_rho(level=level2) * w2
         else:
             w1 = self.get_wind_w(level=level1)
             wind1 = w1 * w1
@@ -356,8 +367,7 @@ class get_point_parameters:
         ds = self.ds.sel(level=level)
         pressure_k = level
         ps = ds["surface_pressure"].values
-        p0 = 5000
-        eta_k = (pressure_k * 100 - 5000) / (ps - p0)
+        eta_k = (pressure_k * 100 - top_model) / (ps - top_model)
         eta_k = np.where(ps >= pressure_k * 100, eta_k, np.nan)
         return eta_k
 
@@ -372,6 +382,15 @@ class get_point_parameters:
         z_upper = self.ds.sel(level=level_higher)["geopotential"].values / self.g
         z_lower = self.ds.sel(level=level_lower)["geopotential"].values / self.g
         d_eta_dz = (eta_upper - eta_lower) / (z_upper - z_lower)
-        dp_dz = (ps - 5000) * d_eta_dz
+        dp_dz = (ps - top_model) * d_eta_dz
         dp_dz = np.where(ps >= level * 100, dp_dz, np.nan)
         return dp_dz
+
+    def get_radius_effect(self,level):
+
+        ds = self.ds.sel(level=level)
+        u = ds["u_component_of_wind"].values
+        v = ds["u_component_of_wind"].values
+        ps = ds["geopotential"].values / self.g
+        R = radius + ps
+        return (u**2 + v**2) / R
