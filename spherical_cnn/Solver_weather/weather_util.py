@@ -114,7 +114,7 @@ class get_point_parameters:
         geopotential1 = ds_level1["geopotential"].values
         geopotential2 = ds_level2["geopotential"].values
 
-        high_diff = (geopotential2 - geopotential1) / self.g
+        high_diff = (geopotential1 - geopotential2) / self.g
         return high_diff
 
 
@@ -184,6 +184,8 @@ class get_point_parameters:
         elif wind_type == "p":
             wind = self.get_true_pressure(level=level)
             print("pressure")
+        elif wind_type == "q":
+            wind = self.get_specific_humidity(level=level)
         elif wind_type == "uu":
             wind = self.get_wind_u(level=level) * self.get_wind_u(level=level)
             print("uu")
@@ -193,6 +195,7 @@ class get_point_parameters:
             wind = self.get_wind_w(level=level) * self.get_wind_u(level=level)
         elif wind_type == "urho":
             wind = self.get_rho(level=level) * self.get_wind_u(level=level)
+
         dx = np.zeros_like(wind)
         dx = (np.roll(wind, -1, axis=0) - np.roll(wind, 1, axis=0)) / (2 * lon_dis)
         print("lon_dis:f{}",lon_dis)
@@ -210,6 +213,8 @@ class get_point_parameters:
             wind = self.get_wind_w(level=level)
         elif wind_type == "p":
             wind = self.get_true_pressure(level=level)
+        elif wind_type == "q":
+            wind = self.get_specific_humidity(level=level)
         elif wind_type == "uv":
             wind = self.get_wind_u(level=level) * self.get_wind_v(level=level)
             print("uv")
@@ -247,6 +252,9 @@ class get_point_parameters:
         elif wind_type == "p":
             wind1 = self.get_true_pressure(level=level1)
             wind2 = self.get_true_pressure(level=level2)
+        elif wind_type == "q":
+            wind1 = self.get_specific_humidity(level=level1)
+            wind2 = self.get_specific_humidity(level=level2)
         elif wind_type == "uw":
             w1 = self.get_wind_w(level=level1)
             wind1 = self.get_wind_u(level=level1) * w1
@@ -394,3 +402,8 @@ class get_point_parameters:
         ps = ds["geopotential"].values / self.g
         R = radius + ps
         return (u**2 + v**2) / R
+
+    def get_specific_humidity(self,level):
+        ds = self.ds.sel(level=level)
+        q = ds["specific_humidity"].values
+        return q
