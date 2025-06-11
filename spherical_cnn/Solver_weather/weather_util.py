@@ -407,3 +407,8 @@ class get_point_parameters:
         ds = self.ds.sel(level=level)
         q = ds["specific_humidity"].values
         return q
+
+    def get_temperature(self,level):
+        ds = self.ds.sel(level=level)
+        T = ds["temperature"].values
+        return T
