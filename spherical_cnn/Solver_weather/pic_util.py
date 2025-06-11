@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.interpolate import griddata
 def draw(pic, lon, lat, scale = 1e6, title=""):
 
     plt.figure(figsize=(14, 5))
@@ -17,3 +19,35 @@ def draw(pic, lon, lat, scale = 1e6, title=""):
     plt.title(title)
     plt.tight_layout()
     plt.show()
+
+def fill_nan_2d(array: np.ndarray, method: str = 'linear') -> np.ndarray:
+    """
+    用 griddata 对二维数组中的 NaN 进行插值填充。
+    如果线性插值失败，会回退使用最近邻。
+    """
+    assert array.ndim == 2, "只支持二维数组插值"
+
+    ny, nx = array.shape
+    xx, yy = np.meshgrid(np.arange(nx), np.arange(ny))
+
+    nan_mask = np.isnan(array)
+    valid_mask = ~nan_mask
+
+    points = np.stack([xx[valid_mask], yy[valid_mask]], axis=-1)
+    values = array[valid_mask]
+
+
+    interp_points = np.stack([xx[nan_mask], yy[nan_mask]], axis=-1)
+
+    # 线性插值
+    array_filled = array.copy()
+    interp_values = griddata(points, values, interp_points, method=method)
+
+    if np.isnan(interp_values).any():
+        interp_values_nn = griddata(points, values, interp_points, method='nearest')
+        interp_values = np.where(np.isnan(interp_values), interp_values_nn, interp_values)
+
+    array_filled[nan_mask] = interp_values
+
+    return array_filled
+

@@ -35,8 +35,19 @@ for time_index in range(0,100,2):
     dp_dz = util_curr.d_z(level=[850,875], wind_type ="p")
     # dp_dz = util_curr.compute_dp_dz(level= [850, 925])
     rho = util_curr.get_rho(level=850)
-    PGF = -( 1 / rho) * dp_dz
+    buoyancy = util_curr.get_buoyancy(level=850)
+    PGF = -( 1 / rho) * dp_dz + buoyancy
     ##########PGF##########
+
+
+    ##########R effect##########
+    radius_effect = util_curr.get_radius_effect(level=850)
+    ##########R effect##########
+
+    ##########PGF_NEW##########
+    dp_dz_new = util_curr.get_dp_dz_eta(level=850)
+    PGF_NEW = - 1 / rho * dp_dz_new
+    ##########PGF_NEW##########
 
     ##########coriolis_force##########
     coriolis = util_curr.get_w_coriolis_force(level=850)
@@ -57,19 +68,22 @@ for time_index in range(0,100,2):
     gravity_term = -g * np.ones_like(w_advection)
     lon = util_curr.get_lon(level=850)
     lat = util_curr.get_lat(level=850)
-    dw_dt_exp = w_advection  + diffusion + coriolis+ PGF + gravity_term
+    dw_dt_exp = w_advection  + diffusion + coriolis + PGF_NEW + gravity_term + radius_effect
     ##########dudt##########
 
     ##########dudt true##########
     w_curr = util_curr.get_wind_w(level=850)
     w_next = util_next.get_wind_w(level=850)
+    ##########TODO
     dw_dt_true = (w_next - w_curr) / 3600
     ##########dudt true##########
+
 
 
     if time_index == 98:
         draw(dw_dt_exp, lon=lon, lat=lat,scale=1,title="dw_dt_exp")
         draw(dw_dt_true, lon=lon, lat=lat,scale=1,title="dw_dt_true")
+        draw(dw_dt_true - dw_dt_exp, lon=lon, lat=lat,scale=1,title="redisual")
     residual = dw_dt_true - dw_dt_exp
     residuals.append(residual.flatten())
 
@@ -82,3 +96,8 @@ plt.ylabel("Frequency", fontsize=12)
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+
+####插值
+####高度对比
+####T0 T1 同高度

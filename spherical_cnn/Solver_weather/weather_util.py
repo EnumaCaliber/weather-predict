@@ -5,6 +5,8 @@ from pic_util import *
 # constant define
 R = 287.0
 P = 85000
+top_model = 10
+radius = 6.371e6
 
 
 class get_point_parameters:
@@ -112,7 +114,7 @@ class get_point_parameters:
         geopotential1 = ds_level1["geopotential"].values
         geopotential2 = ds_level2["geopotential"].values
 
-        high_diff = (geopotential2 - geopotential1) / self.g
+        high_diff = (geopotential1 - geopotential2) / self.g
         return high_diff
 
 
@@ -182,6 +184,8 @@ class get_point_parameters:
         elif wind_type == "p":
             wind = self.get_true_pressure(level=level)
             print("pressure")
+        elif wind_type == "q":
+            wind = self.get_specific_humidity(level=level)
         elif wind_type == "uu":
             wind = self.get_wind_u(level=level) * self.get_wind_u(level=level)
             print("uu")
@@ -189,6 +193,9 @@ class get_point_parameters:
             wind = self.get_wind_v(level=level) * self.get_wind_u(level=level)
         elif wind_type == "wu":
             wind = self.get_wind_w(level=level) * self.get_wind_u(level=level)
+        elif wind_type == "urho":
+            wind = self.get_rho(level=level) * self.get_wind_u(level=level)
+
         dx = np.zeros_like(wind)
         dx = (np.roll(wind, -1, axis=0) - np.roll(wind, 1, axis=0)) / (2 * lon_dis)
         print("lon_dis:f{}",lon_dis)
@@ -206,6 +213,8 @@ class get_point_parameters:
             wind = self.get_wind_w(level=level)
         elif wind_type == "p":
             wind = self.get_true_pressure(level=level)
+        elif wind_type == "q":
+            wind = self.get_specific_humidity(level=level)
         elif wind_type == "uv":
             wind = self.get_wind_u(level=level) * self.get_wind_v(level=level)
             print("uv")
@@ -213,6 +222,8 @@ class get_point_parameters:
             wind = self.get_wind_v(level=level) * self.get_wind_v(level=level)
         elif wind_type == "wv":
             wind = self.get_wind_w(level=level) * self.get_wind_v(level=level)
+        elif wind_type == "vrho":
+            wind = self.get_rho(level=level) * self.get_wind_v(level=level)
         dy = np.zeros_like(wind)
         # 中心差分（内部点）
         dy[:, 1:-1] = (wind[:, 2:] - wind[:, :-2]) / (2 * lat_dis)
@@ -241,6 +252,9 @@ class get_point_parameters:
         elif wind_type == "p":
             wind1 = self.get_true_pressure(level=level1)
             wind2 = self.get_true_pressure(level=level2)
+        elif wind_type == "q":
+            wind1 = self.get_specific_humidity(level=level1)
+            wind2 = self.get_specific_humidity(level=level2)
         elif wind_type == "uw":
             w1 = self.get_wind_w(level=level1)
             wind1 = self.get_wind_u(level=level1) * w1
@@ -252,6 +266,11 @@ class get_point_parameters:
             wind1 = self.get_wind_v(level=level1) * w1
             w2 = self.get_wind_w(level=level2)
             wind2 = self.get_wind_v(level=level2) * w2
+        elif wind_type == "wrho":
+            w1 = self.get_wind_w(level=level1)
+            w2 = self.get_wind_w(level=level2)
+            wind1 = self.get_rho(level=level1) * w1
+            wind2 = self.get_rho(level=level2) * w2
         else:
             w1 = self.get_wind_w(level=level1)
             wind1 = w1 * w1
@@ -341,5 +360,55 @@ class get_point_parameters:
 
         return dp_dz
 
+    def get_buoyancy(self, level):
+        ds = self.ds.sel(level=level)
+        T = ds["temperature"].values
+        T_ref = ds["2m_temperature"].values
+        Q = ds["specific_humidity"].values
+        Tv = T * (1 + 0.61 * Q)
+
+        B = self.g * (Tv - T_ref) / T_ref
+        return B
 
 
+    def eta_from_level(self, level):
+        ds = self.ds.sel(level=level)
+        pressure_k = level
+        ps = ds["surface_pressure"].values
+        eta_k = (pressure_k * 100 - top_model) / (ps - top_model)
+        eta_k = np.where(ps >= pressure_k * 100, eta_k, np.nan)
+        return eta_k
+
+    def get_dp_dz_eta(self,level):
+        ds = self.ds.sel(level=level)
+        ps = ds["surface_pressure"].values
+        level_higher = level + 25
+        level_lower = level - 25
+
+        eta_upper = self.eta_from_level(level_higher)
+        eta_lower = self.eta_from_level(level_lower)
+        z_upper = self.ds.sel(level=level_higher)["geopotential"].values / self.g
+        z_lower = self.ds.sel(level=level_lower)["geopotential"].values / self.g
+        d_eta_dz = (eta_upper - eta_lower) / (z_upper - z_lower)
+        dp_dz = (ps - top_model) * d_eta_dz
+        dp_dz = np.where(ps >= level * 100, dp_dz, np.nan)
+        return dp_dz
+
+    def get_radius_effect(self,level):
+
+        ds = self.ds.sel(level=level)
+        u = ds["u_component_of_wind"].values
+        v = ds["u_component_of_wind"].values
+        ps = ds["geopotential"].values / self.g
+        R = radius + ps
+        return (u**2 + v**2) / R
+
+    def get_specific_humidity(self,level):
+        ds = self.ds.sel(level=level)
+        q = ds["specific_humidity"].values
+        return q
+
+    def get_temperature(self,level):
+        ds = self.ds.sel(level=level)
+        T = ds["temperature"].values
+        return T
