@@ -1,5 +1,4 @@
 import xarray as xr
-import numpy as np
 from pic_util import *
 
 # constant define
@@ -39,7 +38,6 @@ class get_point_parameters:
     def get_u_coriolis_force(self, level):
         ds = self.ds.sel(level=level)
         lon_size = ds["longitude"].values.size
-        lon = ds["longitude"].values
         lat = ds["latitude"].values
         v = ds["v_component_of_wind"].values
 
@@ -49,25 +47,6 @@ class get_point_parameters:
 
         lat = np.tile(lat[np.newaxis, :], (lon_size, 1))
         lat_rad = np.deg2rad(lat)
-        fv = 2 * self.omega * np.sin(lat_rad) * v
-        ew = 2 * self.omega * np.cos(lat_rad) * w * self.cos_alpha
-        fw = 2 * self.omega * np.sin(lat_rad) * w * self.sin_alpha
-        return (fv + ew + fw)
-
-    def get_u_coriolis_force_mesh(self, level):
-        ds = self.ds.sel(level=level)
-
-        # 读取变量
-        v = ds["v_component_of_wind"].values  # shape: (lon, lat) 确保！
-        w = self.get_wind_w(level=level)
-
-        # 经纬网格生成
-        lon = ds["longitude"].values
-        lat = ds["latitude"].values
-        lon2d, lat2d = np.meshgrid(lon, lat, indexing="ij")  # shape: (lon, lat)
-        lat_rad = np.deg2rad(lat2d)
-
-        # 计算三项
         fv = 2 * self.omega * np.sin(lat_rad) * v
         ew = 2 * self.omega * np.cos(lat_rad) * w * self.cos_alpha
         fw = 2 * self.omega * np.sin(lat_rad) * w * self.sin_alpha
@@ -96,7 +75,7 @@ class get_point_parameters:
         lat = np.tile(lat[np.newaxis, :], (lon, 1))
         lat_rad = np.deg2rad(lat)
         coriolis_force = 2 * self.omega * np.cos(lat_rad) * (u * self.cos_alpha + v * self.sin_alpha)
-        return (- coriolis_force)
+        return - coriolis_force
 
     def get_high_meter(self, level):
         ds = self.ds.sel(level=level)
@@ -129,8 +108,6 @@ class get_point_parameters:
         lon = ds["longitude"].values
         lat = ds["latitude"].values
         delta_lon = lon[1] - lon[0]
-        # distance = delta_lon * 2 * np.pi *  EARTH_RADIUS_M / 360
-
         distance = delta_lon * 2 * np.pi * EARTH_RADIUS_M / 360
         return abs(distance)
 
@@ -252,7 +229,6 @@ class get_point_parameters:
             wind1 = self.get_wind_u(level=level1) * w1
             w2 = self.get_wind_w(level=level2)
             wind2 = self.get_wind_u(level=level2) * w2
-            print("uw")
         elif wind_type == "vw":
             w1 = self.get_wind_w(level=level1)
             wind1 = self.get_wind_v(level=level1) * w1
@@ -325,30 +301,6 @@ class get_point_parameters:
 
         return dz_dx  # 单位：m/m
 
-    def compute_dp_dz(self, level):
-        """
-        Approximate ∂p/∂z using finite difference between two pressure levels.
-        """
-        ds = self.ds
-        p1 = level[0]
-        p2 = level[1]
-        ds1 = ds.sel(level=p1)
-        ds2 = ds.sel(level=p2)
-
-        # 单位转换为 Pa（如果是 hPa）
-
-        p1_Pa = ds1["level"].values
-        p2_Pa = ds2["level"].values
-
-        delta_p = abs((p2_Pa - p1_Pa) * 100)  # scalar: pressure difference
-
-        z1 = ds1["geopotential"].values / 9.80665  # convert from geopotential to meters
-        z2 = ds2["geopotential"].values / 9.80665
-        delta_z = z2 - z1  # shape: (lon, lat)
-
-        dp_dz = delta_p / delta_z  # shape: (lon, lat)
-
-        return dp_dz
 
     def get_buoyancy(self, level):
         ds = self.ds.sel(level=level)
@@ -401,3 +353,31 @@ class get_point_parameters:
         ds = self.ds.sel(level=level)
         T = ds["temperature"].values
         return T
+
+
+
+    ####those methods maybe no useful
+    def compute_dp_dz(self, level):
+        """
+        Approximate ∂p/∂z using finite difference between two pressure levels.
+        """
+        ds = self.ds
+        p1 = level[0]
+        p2 = level[1]
+        ds1 = ds.sel(level=p1)
+        ds2 = ds.sel(level=p2)
+
+        # 单位转换为 Pa（如果是 hPa）
+
+        p1_Pa = ds1["level"].values
+        p2_Pa = ds2["level"].values
+
+        delta_p = abs((p2_Pa - p1_Pa) * 100)  # scalar: pressure difference
+
+        z1 = ds1["geopotential"].values / 9.80665  # convert from geopotential to meters
+        z2 = ds2["geopotential"].values / 9.80665
+        delta_z = z2 - z1  # shape: (lon, lat)
+
+        dp_dz = delta_p / delta_z  # shape: (lon, lat)
+
+        return dp_dz
