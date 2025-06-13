@@ -21,29 +21,27 @@ class get_point_parameters:
         self.omega = 7.2921e-5
         self.g = 9.80665
 
-    def get_rho(self,level):
+    def get_rho(self, level):
         ds = self.ds.sel(level=level)
-        q = ds["specific_humidity"].values # specific_humidity
+        q = ds["specific_humidity"].values  # specific_humidity
         T = ds["temperature"].values
         P = self.get_true_pressure(level=level)
         rho = P / (R * T * (1 + 0.61 * q))
         return rho
 
-
-    def get_t_virtual(self,level):
+    def get_t_virtual(self, level):
         ds = self.ds.sel(level=level)
-        q = ds["specific_humidity"].values # specific_humidity
+        q = ds["specific_humidity"].values  # specific_humidity
         T = ds["temperature"].values
         T_virtual = T * (1 + 0.61 * q)
         return T_virtual
 
-    def get_u_coriolis_force(self,level):
+    def get_u_coriolis_force(self, level):
         ds = self.ds.sel(level=level)
         lon_size = ds["longitude"].values.size
         lon = ds["longitude"].values
         lat = ds["latitude"].values
         v = ds["v_component_of_wind"].values
-
 
         ##########################
         w = self.get_wind_w(level=level)
@@ -61,7 +59,7 @@ class get_point_parameters:
 
         # 读取变量
         v = ds["v_component_of_wind"].values  # shape: (lon, lat) 确保！
-        w = self.get_wind_w(level = level)
+        w = self.get_wind_w(level=level)
 
         # 经纬网格生成
         lon = ds["longitude"].values
@@ -75,22 +73,21 @@ class get_point_parameters:
         fw = 2 * self.omega * np.sin(lat_rad) * w * self.sin_alpha
         return fv + ew + fw
 
-    def get_v_coriolis_force(self,level):
+    def get_v_coriolis_force(self, level):
         ds = self.ds.sel(level=level)
         lon = ds["longitude"].values.size
         lat = ds["latitude"].values
         lat = np.tile(lat[np.newaxis, :], (lon, 1))
 
-
         u = ds["u_component_of_wind"].values
-        w = self.get_wind_w(level = level)
+        w = self.get_wind_w(level=level)
         lat_rad = np.deg2rad(lat)
         fu = 2 * self.omega * np.sin(lat_rad) * u
         ew = 2 * self.omega * np.cos(lat_rad) * w * self.sin_alpha
         fw = 2 * self.omega * np.sin(lat_rad) * w * self.cos_alpha
         return (- fu + ew + fw)
 
-    def get_w_coriolis_force(self,level):
+    def get_w_coriolis_force(self, level):
         ds = self.ds.sel(level=level)
         u = ds["u_component_of_wind"].values
         v = ds["v_component_of_wind"].values
@@ -101,14 +98,13 @@ class get_point_parameters:
         coriolis_force = 2 * self.omega * np.cos(lat_rad) * (u * self.cos_alpha + v * self.sin_alpha)
         return (- coriolis_force)
 
-    def get_high_meter(self,level):
+    def get_high_meter(self, level):
         ds = self.ds.sel(level=level)
         geopotential = ds["geopotential"].values
         high = geopotential / self.g
         return high
 
-
-    def get_high_diff(self,level1,level2):
+    def get_high_diff(self, level1, level2):
         ds_level1 = self.ds.sel(level=level1)
         ds_level2 = self.ds.sel(level=level2)
         geopotential1 = ds_level1["geopotential"].values
@@ -117,17 +113,16 @@ class get_point_parameters:
         high_diff = (geopotential1 - geopotential2) / self.g
         return high_diff
 
-
-    def get_lat_distance(self,level):
+    def get_lat_distance(self, level):
         EARTH_RADIUS_M = 6370000
         ds = self.ds.sel(level=level)
         # meter
         lat = ds["latitude"].values
         delta_lat = lat[1] - lat[0]
-        distance = delta_lat * 2 * np.pi *  EARTH_RADIUS_M / 360
+        distance = delta_lat * 2 * np.pi * EARTH_RADIUS_M / 360
         return distance
 
-    def get_lon_distance(self,level):
+    def get_lon_distance(self, level):
         EARTH_RADIUS_M = 6370000
         ds = self.ds.sel(level=level)
         # meter
@@ -139,30 +134,28 @@ class get_point_parameters:
         distance = delta_lon * 2 * np.pi * EARTH_RADIUS_M / 360
         return abs(distance)
 
-    def get_lon(self,level):
+    def get_lon(self, level):
         ds = self.ds.sel(level=level)
         lon = ds["longitude"].values
         return lon
 
-    def get_lat(self,level):
+    def get_lat(self, level):
         ds = self.ds.sel(level=level)
         lat = ds["latitude"].values
         return lat
 
-
-    def get_wind_u(self,level):
+    def get_wind_u(self, level):
         ds = self.ds.sel(level=level)
         u = ds["u_component_of_wind"].values
         return u
 
-    def get_wind_v(self,level):
+    def get_wind_v(self, level):
         ds = self.ds.sel(level=level)
         v = ds["v_component_of_wind"].values
         return v
 
-    def get_wind_w(self,level):
+    def get_wind_w(self, level):
         ds = self.ds.sel(level=level)
-
 
         ############
         w = ds["vertical_velocity"].values
@@ -198,9 +191,8 @@ class get_point_parameters:
 
         dx = np.zeros_like(wind)
         dx = (np.roll(wind, -1, axis=0) - np.roll(wind, 1, axis=0)) / (2 * lon_dis)
-        print("lon_dis:f{}",lon_dis)
+        print("lon_dis:f{}", lon_dis)
         return dx
-
 
     # lat
     def d_y(self, level, wind_type):
@@ -238,7 +230,7 @@ class get_point_parameters:
         level.sort()
         level1 = level[0]
         level2 = level[1]
-        high_diff = self.get_high_diff(level1=level1,level2=level2)
+        high_diff = self.get_high_diff(level1=level1, level2=level2)
 
         if wind_type == "u":
             wind1 = self.get_wind_u(level=level1)
@@ -279,14 +271,13 @@ class get_point_parameters:
         dz = (wind2 - wind1) / high_diff
         return dz
 
-
-    def dd_x(self, dx,level):
+    def dd_x(self, dx, level):
         lon_dis = self.get_lon_distance(level=level)
         ddx = np.zeros_like(dx)
         ddx = (np.roll(dx, -1, axis=0) - np.roll(dx, 1, axis=0)) / (2 * lon_dis)
         return ddx
 
-    def dd_y(self, dy,level):
+    def dd_y(self, dy, level):
         lat_dis = self.get_lat_distance(level=level)
         ddy = np.zeros_like(dy)
         ddy[:, 1:-1] = (dy[:, 2:] - dy[:, :-2]) / (2 * lat_dis)
@@ -296,17 +287,16 @@ class get_point_parameters:
         ddy[:, -1] = (dy[:, -1] - dy[:, -2]) / lat_dis
         return ddy
 
-    #du1 low level du2 high level
-    def dd_z(self, level, du1,du2):
+    # du1 low level du2 high level
+    def dd_z(self, level, du1, du2):
         level.sort()
         level1 = level[0]
         level2 = level[1]
-        high_diff = self.get_high_diff(level1=level1,level2=level2)
+        high_diff = self.get_high_diff(level1=level1, level2=level2)
         ddz = (du1 - du2) / (high_diff)
         return ddz
 
-
-    def get_true_pressure(self,level):
+    def get_true_pressure(self, level):
         ds = self.ds.sel(level=level)
         T = ds["temperature"].values
         phi = ds["geopotential"].values
@@ -315,7 +305,7 @@ class get_point_parameters:
         p_true = p0 * np.exp(-self.g * z / (R * T))
         return p_true
 
-    def get_level(self,level):
+    def get_level(self, level):
         ds = self.ds.sel(level=level)
         level = ds["level"].values
         return level
@@ -340,7 +330,7 @@ class get_point_parameters:
         Approximate ∂p/∂z using finite difference between two pressure levels.
         """
         ds = self.ds
-        p1= level[0]
+        p1 = level[0]
         p2 = level[1]
         ds1 = ds.sel(level=p1)
         ds2 = ds.sel(level=p2)
@@ -350,7 +340,7 @@ class get_point_parameters:
         p1_Pa = ds1["level"].values
         p2_Pa = ds2["level"].values
 
-        delta_p = abs((p2_Pa - p1_Pa) * 100 )  # scalar: pressure difference
+        delta_p = abs((p2_Pa - p1_Pa) * 100)  # scalar: pressure difference
 
         z1 = ds1["geopotential"].values / 9.80665  # convert from geopotential to meters
         z2 = ds2["geopotential"].values / 9.80665
@@ -370,7 +360,6 @@ class get_point_parameters:
         B = self.g * (Tv - T_ref) / T_ref
         return B
 
-
     def eta_from_level(self, level):
         ds = self.ds.sel(level=level)
         pressure_k = level
@@ -379,7 +368,7 @@ class get_point_parameters:
         eta_k = np.where(ps >= pressure_k * 100, eta_k, np.nan)
         return eta_k
 
-    def get_dp_dz_eta(self,level):
+    def get_dp_dz_eta(self, level):
         ds = self.ds.sel(level=level)
         ps = ds["surface_pressure"].values
         level_higher = level + 25
@@ -394,21 +383,21 @@ class get_point_parameters:
         dp_dz = np.where(ps >= level * 100, dp_dz, np.nan)
         return dp_dz
 
-    def get_radius_effect(self,level):
+    def get_radius_effect(self, level):
 
         ds = self.ds.sel(level=level)
         u = ds["u_component_of_wind"].values
         v = ds["u_component_of_wind"].values
         ps = ds["geopotential"].values / self.g
         R = radius + ps
-        return (u**2 + v**2) / R
+        return (u ** 2 + v ** 2) / R
 
-    def get_specific_humidity(self,level):
+    def get_specific_humidity(self, level):
         ds = self.ds.sel(level=level)
         q = ds["specific_humidity"].values
         return q
 
-    def get_temperature(self,level):
+    def get_temperature(self, level):
         ds = self.ds.sel(level=level)
         T = ds["temperature"].values
         return T

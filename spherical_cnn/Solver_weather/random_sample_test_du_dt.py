@@ -65,6 +65,13 @@ for time_index in range(0,100,2):
     residual = du_dt_true - du_dt_exp
     residuals.append(residual.flatten())
 
+
+    ##########high different ######
+    high_1 = util_curr.get_high_meter(level=850)
+    high_2 = util_curr.get_high_meter(level=925)
+    print(high_1 - high_2)
+
+
 residuals_all = np.concatenate(residuals)
 plt.figure(figsize=(8, 5))
 plt.hist(residuals_all, bins=100, color='steelblue', edgecolor='black')
