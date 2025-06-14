@@ -2,7 +2,7 @@ import xarray as xr
 from spherical_cnn.Solver_weather.weather_util import get_point_parameters
 import numpy as np
 import matplotlib.pyplot as plt
-
+from pic_util import *
 file_path = "era5_100_dudt_samples.nc"
 ds = xr.open_dataset(file_path)
 
@@ -61,6 +61,15 @@ for time_index in range(0,100,2):
     u_next = util_next.get_wind_u(level=850)
     du_dt_true = (u_next - u_curr) / 3600
     ##########dudt true##########
+
+
+    ##########euler ode##########
+    if time_index == 98:
+        lon = util_curr.get_lon(level=850)
+        lat = util_curr.get_lat(level=850)
+        u_hour = u_curr + du_dt_exp * 3600
+        draw(u_hour, lon=lon, lat=lat,scale=1,title="u_hour")
+    ##########euler ode##########
 
     residual = du_dt_true - du_dt_exp
     residuals.append(residual.flatten())

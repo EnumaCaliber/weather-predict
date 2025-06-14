@@ -39,6 +39,8 @@ for time_index in range(0,100,2):
     lon = util_curr.get_lon(level=850)
     lat = util_curr.get_lat(level=850)
     if time_index == 98:
+        q_hour = q_curr + v_delta_q * 3600
+        draw(q_hour, lon=lon, lat=lat, scale=1, title="q_hour")
         draw(dq_dt_true, lon=lon, lat=lat, scale=1, title="dq_dt_true")
         draw(v_delta_q, lon=lon, lat=lat, scale=1, title="v_delta_q")
         draw(dq_dz, lon=lon, lat=lat, scale=1, title="dq_dz")

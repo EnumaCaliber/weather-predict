@@ -45,6 +45,8 @@ for time_index in range(0,100,2):
     lon = util_curr.get_lon(level=850)
     lat = util_curr.get_lat(level=850)
     if time_index == 98:
+        T_hour = T_curr + rtcpp * 3600
+        draw(T_hour, lon=lon, lat=lat, scale=1, title="T_hour")
         draw(dT_dt_true, lon=lon, lat=lat, scale=1, title="dT_dt_true")
         draw(rtcpp, lon=lon, lat=lat, scale=1, title="rtcpp")
 
