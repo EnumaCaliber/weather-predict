@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from pic_util import *
 file_path = "era5_100_dudt_samples.nc"
 ds = xr.open_dataset(file_path)
-
+import math
 
 
 time = ds.time.values
@@ -13,7 +13,7 @@ level = 850
 diffusion_coefficient_flat = 10e-5
 diffusion_coefficient_vertical = 1
 residuals = []
-
+acc_list = []
 for time_index in range(0,100,2):
     time_curr = ds.time.values[time_index]
     time_next = ds.time.values[time_index + 1]
@@ -62,6 +62,21 @@ for time_index in range(0,100,2):
     du_dt_true = (u_next - u_curr) / 3600
     ##########dudt true##########
 
+    residual = du_dt_true - du_dt_exp
+    residuals.append(residual.flatten())
+    # === ACC 计算 ===
+    lat = util_curr.get_lat(level=850)
+    cos_lat = np.cos(np.deg2rad(lat))  # shape: (H, W)
+    weights = cos_lat / cos_lat.mean()
+
+    f = du_dt_exp
+    o = du_dt_true
+    f_ano = f - f.mean()
+    o_ano = o - o.mean()
+    numerator = np.sum(weights * f_ano * o_ano)
+    denominator = math.sqrt(np.sum(weights * f_ano ** 2)) * math.sqrt(np.sum(weights * o_ano ** 2))
+    acc = numerator / denominator
+    acc_list.append(acc)
 
     ##########euler ode##########
     if time_index == 98:
@@ -69,10 +84,10 @@ for time_index in range(0,100,2):
         lat = util_curr.get_lat(level=850)
         u_hour = u_curr + du_dt_exp * 3600
         draw(u_hour, lon=lon, lat=lat,scale=1,title="u_hour")
+        draw(u_next, lon=lon, lat=lat,scale=1,title="u_next")
     ##########euler ode##########
 
-    residual = du_dt_true - du_dt_exp
-    residuals.append(residual.flatten())
+
 
 
     ##########high different ######
@@ -80,8 +95,21 @@ for time_index in range(0,100,2):
     high_2 = util_curr.get_high_meter(level=925)
     print(high_1 - high_2)
 
-
+# === 汇总 ===
 residuals_all = np.concatenate(residuals)
+rmse = np.sqrt(np.mean(residuals_all ** 2))
+mean_bias = np.mean(residuals_all)
+avg_acc = np.mean(acc_list)
+
+print("RMSE:", rmse)
+print("Mean Bias:", mean_bias)
+print("Mean ACC:", avg_acc)
+
+
+
+mean_bias = np.mean(residuals_all)
+print("RMSE:", rmse)
+print("Mean Bias:", mean_bias)
 plt.figure(figsize=(8, 5))
 plt.hist(residuals_all, bins=100, color='steelblue', edgecolor='black')
 plt.title("Histogram of Residuals: $du/dt_{true} - du/dt_{exp}$", fontsize=14)

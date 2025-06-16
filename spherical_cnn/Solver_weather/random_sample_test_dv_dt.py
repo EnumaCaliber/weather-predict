@@ -3,7 +3,7 @@ from spherical_cnn.Solver_weather.weather_util import get_point_parameters
 import numpy as np
 import matplotlib.pyplot as plt
 from pic_util import *
-
+import math
 file_path = "era5_100_dudt_samples.nc"
 ds = xr.open_dataset(file_path)
 
@@ -14,7 +14,7 @@ level = 850
 diffusion_coefficient_flat = 10e-5
 diffusion_coefficient_vertical = 1
 residuals = []
-
+acc_list = []
 for time_index in range(0,100,2):
     time_curr = ds.time.values[time_index]
     time_next = ds.time.values[time_index + 1]
@@ -66,16 +66,41 @@ for time_index in range(0,100,2):
     dv_dt_true = (v_next - v_curr) / 3600
     ##########dudt true##########
 
+    residual = dv_dt_true - dv_dt_exp
+    residuals.append(residual.flatten())
+
+    # === ACC ===
+    lat = util_curr.get_lat(level=850)
+    cos_lat = np.cos(np.deg2rad(lat))  # shape: (H, W)
+    weights = cos_lat / cos_lat.mean()
+
+    f = dv_dt_exp
+    o = dv_dt_true
+    f_ano = f - f.mean()
+    o_ano = o - o.mean()
+    numerator = np.sum(weights * f_ano * o_ano)
+    denominator = math.sqrt(np.sum(weights * f_ano ** 2)) * math.sqrt(np.sum(weights * o_ano ** 2))
+    acc = numerator / denominator
+    acc_list.append(acc)
+
+
     if time_index == 98:
         lon = util_curr.get_lon(level=850)
         lat = util_curr.get_lat(level=850)
         v_hour = v_curr + dv_dt_exp * 3600
+        draw(v_next, lon=lon, lat=lat,scale=1,title="v_next")
         draw(v_hour, lon=lon, lat=lat,scale=1,title="v_hour")
 
-    residual = dv_dt_true - dv_dt_exp
-    residuals.append(residual.flatten())
-
 residuals_all = np.concatenate(residuals)
+rmse = np.sqrt(np.mean(residuals_all ** 2))
+mean_bias = np.mean(residuals_all)
+avg_acc = np.mean(acc_list)
+
+print("RMSE:", rmse)
+print("Mean Bias:", mean_bias)
+print("Mean ACC:", avg_acc)
+
+
 plt.figure(figsize=(8, 5))
 plt.hist(residuals_all, bins=100, color='steelblue', edgecolor='black')
 plt.title("Histogram of Residuals: $dv/dt_{true} - dv/dt_{exp}$", fontsize=14)
