@@ -1,9 +1,12 @@
 import xarray as xr
+
+from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
 from spherical_cnn.Solver_weather.weather_util import get_point_parameters
 import numpy as np
 import matplotlib.pyplot as plt
 from pic_util import *
 import math
+import torch
 
 file_path = "era5_100_dudt_samples.nc"
 ds = xr.open_dataset(file_path)
@@ -17,6 +20,8 @@ top_model = 10
 radius = 6.371e6
 cp = 1004
 
+T_hour_list = []
+T_next_list = []
 
 for time_index in range(0,100,2):
     time_curr = ds.time.values[time_index]
@@ -38,55 +43,43 @@ for time_index in range(0,100,2):
     T_curr = util_curr.get_temperature(level=850)
     T_next = util_next.get_temperature(level=850)
     dT_dt_true = (T_next - T_curr) / 3600
+
     ##########dTdt true##########
 
     ##########rtcpp##########
     rtcpp = (T_curr * R / (cp * p_curr)) * dp_dt
+    T_pre = T_curr + rtcpp * 3600
     ##########rtcpp##########
 
     residual = dT_dt_true  - rtcpp
     residuals.append(residual.flatten())
 
+    T_hour_list.append(T_pre)  # shape: [1, 1, H, W]
+    T_next_list.append(T_next)  # shape: [1, 1, H, W]
 
-    # === ACC ===
-    lat = util_curr.get_lat(level=850)
-    cos_lat = np.cos(np.deg2rad(lat))
-    weights = cos_lat / cos_lat.mean()
-
-    f = rtcpp
-    o = dT_dt_true
-    f_ano = f - f.mean()
-    o_ano = o - o.mean()
-    numerator = np.sum(weights * f_ano * o_ano)
-    denominator = math.sqrt(np.sum(weights * f_ano ** 2)) * math.sqrt(np.sum(weights * o_ano ** 2))
-    acc = numerator / denominator
-    acc_list.append(acc)
 
 
     lon = util_curr.get_lon(level=850)
     lat = util_curr.get_lat(level=850)
-    if time_index == 98:
-        T_hour = T_curr + rtcpp * 3600
-        draw(T_hour, lon=lon, lat=lat, scale=1, title="T_hour")
-        draw(dT_dt_true, lon=lon, lat=lat, scale=1, title="dT_dt_true")
-        draw(T_next,lon=lon, lat=lat, scale=1, title="T_next")
-
-# === 汇总评估 ===
-residuals_all = np.concatenate(residuals)
-rmse = np.sqrt(np.mean(residuals_all ** 2))
-mean_bias = np.mean(residuals_all)
-mean_acc = np.mean(acc_list)
-
-print("RMSE:", rmse)
-print("Mean Bias:", mean_bias)
-print("Mean ACC:", mean_acc)
 
 
-plt.figure(figsize=(8, 5))
-plt.hist(residuals_all, bins=100, color='steelblue', edgecolor='black')
-plt.title("Histogram of Residuals: $drho/dt_{true} - drho/dt_{exp}$", fontsize=14)
-plt.xlabel("Residual Value", fontsize=12)
-plt.ylabel("Frequency", fontsize=12)
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+
+T_pre_np = np.stack(T_hour_list, axis=0)   # shape: [N, 240, 121]
+T_next_np = np.stack(T_next_list, axis=0)
+T_pre_tensor = torch.from_numpy(T_pre_np[:, None, :, :]).float()
+T_next_tensor = torch.from_numpy(T_next_np[:, None, :, :]).float()
+acc_result = weighted_acc_torch_channels(T_pre_tensor, T_next_tensor)
+rmse = weighted_rmse_torch(T_pre_tensor, T_next_tensor)
+print("acc_result:", acc_result)
+print("rmse:", rmse)
+
+
+
+# plt.figure(figsize=(8, 5))
+# plt.hist(residuals_all, bins=100, color='steelblue', edgecolor='black')
+# plt.title("Histogram of Residuals: $drho/dt_{true} - drho/dt_{exp}$", fontsize=14)
+# plt.xlabel("Residual Value", fontsize=12)
+# plt.ylabel("Frequency", fontsize=12)
+# plt.grid(True)
+# plt.tight_layout()
+# plt.show()

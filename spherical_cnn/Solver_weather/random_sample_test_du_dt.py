@@ -1,4 +1,6 @@
 import xarray as xr
+import torch
+from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels,weighted_rmse_torch
 from spherical_cnn.Solver_weather.weather_util import get_point_parameters
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,6 +16,8 @@ diffusion_coefficient_flat = 10e-5
 diffusion_coefficient_vertical = 1
 residuals = []
 acc_list = []
+u_hour_list = []
+u_next_list = []
 for time_index in range(0,100,2):
     time_curr = ds.time.values[time_index]
     time_next = ds.time.values[time_index + 1]
@@ -59,62 +63,67 @@ for time_index in range(0,100,2):
     ##########dudt true##########
     u_curr = util_curr.get_wind_u(level=850)
     u_next = util_next.get_wind_u(level=850)
-    du_dt_true = (u_next - u_curr) / 3600
     ##########dudt true##########
 
-    residual = du_dt_true - du_dt_exp
-    residuals.append(residual.flatten())
-    # === ACC 计算 ===
-    lat = util_curr.get_lat(level=850)
-    cos_lat = np.cos(np.deg2rad(lat))  # shape: (H, W)
-    weights = cos_lat / cos_lat.mean()
 
-    f = du_dt_exp
-    o = du_dt_true
-    f_ano = f - f.mean()
-    o_ano = o - o.mean()
-    numerator = np.sum(weights * f_ano * o_ano)
-    denominator = math.sqrt(np.sum(weights * f_ano ** 2)) * math.sqrt(np.sum(weights * o_ano ** 2))
-    acc = numerator / denominator
-    acc_list.append(acc)
+
+    u_pre = u_curr + du_dt_exp * 3600
+    u_hour_list.append(u_pre)  # shape: [1, 1, H, W]
+    u_next_list.append(u_next)  # shape: [1, 1, H, W]
 
     ##########euler ode##########
-    if time_index == 98:
-        lon = util_curr.get_lon(level=850)
-        lat = util_curr.get_lat(level=850)
-        u_hour = u_curr + du_dt_exp * 3600
-        draw(u_hour, lon=lon, lat=lat,scale=1,title="u_hour")
-        draw(u_next, lon=lon, lat=lat,scale=1,title="u_next")
+    # if time_index == 98:
+    #     lon = util_curr.get_lon(level=850)
+    #     lat = util_curr.get_lat(level=850)
+    #     u_hour = u_curr + du_dt_exp * 3600
+    #     draw(u_hour, lon=lon, lat=lat,scale=1,title="u_hour")
+    #     draw(u_next, lon=lon, lat=lat,scale=1,title="u_next")
     ##########euler ode##########
-
 
 
 
     ##########high different ######
     high_1 = util_curr.get_high_meter(level=850)
     high_2 = util_curr.get_high_meter(level=925)
-    print(high_1 - high_2)
-
-# === 汇总 ===
-residuals_all = np.concatenate(residuals)
-rmse = np.sqrt(np.mean(residuals_all ** 2))
-mean_bias = np.mean(residuals_all)
-avg_acc = np.mean(acc_list)
-
-print("RMSE:", rmse)
-print("Mean Bias:", mean_bias)
-print("Mean ACC:", avg_acc)
+    # print(high_1 - high_2)
 
 
 
-mean_bias = np.mean(residuals_all)
-print("RMSE:", rmse)
-print("Mean Bias:", mean_bias)
-plt.figure(figsize=(8, 5))
-plt.hist(residuals_all, bins=100, color='steelblue', edgecolor='black')
-plt.title("Histogram of Residuals: $du/dt_{true} - du/dt_{exp}$", fontsize=14)
-plt.xlabel("Residual Value", fontsize=12)
-plt.ylabel("Frequency", fontsize=12)
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+    du_dt_true = (u_next - u_curr) / 3600
+    residual = du_dt_true - du_dt_exp
+    residuals.append(residual.flatten())
+
+# Step 1: Stack into [N, H, W]
+u_pre_np = np.stack(u_hour_list, axis=0)   # shape: [N, 240, 121]
+u_next_np = np.stack(u_next_list, axis=0)
+
+
+u_pre_tensor = torch.from_numpy(u_pre_np[:, None, :, :]).float()
+u_next_tensor = torch.from_numpy(u_next_np[:, None, :, :]).float()
+acc_result = weighted_acc_torch_channels(u_pre_tensor, u_next_tensor)
+rmse = weighted_rmse_torch(u_pre_tensor, u_next_tensor)
+print("acc_result:", acc_result)
+print("rmse:", rmse)
+# # === 汇总 ===
+# residuals_all = np.concatenate(residuals)
+# rmse = np.sqrt(np.mean(residuals_all ** 2))
+# mean_bias = np.mean(residuals_all)
+# avg_acc = np.mean(acc_list)
+#
+# print("RMSE:", rmse)
+# print("Mean Bias:", mean_bias)
+# print("Mean ACC:", avg_acc)
+#
+#
+#
+# mean_bias = np.mean(residuals_all)
+# print("RMSE:", rmse)
+# print("Mean Bias:", mean_bias)
+# plt.figure(figsize=(8, 5))
+# plt.hist(residuals_all, bins=100, color='steelblue', edgecolor='black')
+# plt.title("Histogram of Residuals: $du/dt_{true} - du/dt_{exp}$", fontsize=14)
+# plt.xlabel("Residual Value", fontsize=12)
+# plt.ylabel("Frequency", fontsize=12)
+# plt.grid(True)
+# plt.tight_layout()
+# plt.show()

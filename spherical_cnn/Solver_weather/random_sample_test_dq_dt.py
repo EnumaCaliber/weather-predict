@@ -1,8 +1,11 @@
 import xarray as xr
+
+from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
 from spherical_cnn.Solver_weather.weather_util import get_point_parameters
 import numpy as np
 import matplotlib.pyplot as plt
 from pic_util import *
+import torch
 import math
 
 file_path = "era5_100_dudt_samples.nc"
@@ -11,6 +14,10 @@ time = ds.time.values
 level = 850
 residuals = []
 acc_list = []
+
+q_hour_list = []
+q_next_list = []
+
 for time_index in range(0,100,2):
     time_curr = ds.time.values[time_index]
     time_next = ds.time.values[time_index + 1]
@@ -36,46 +43,31 @@ for time_index in range(0,100,2):
     q_next = util_next.get_specific_humidity(level=850)
     dq_dt_true = (q_next - q_curr) / 3600
     ##########dpdt true##########
+    q_hour = q_curr + v_delta_q * 3600
+
+    q_hour_list.append(q_hour)  # shape: [1, 1, H, W]
+    q_next_list.append(q_next)  # shape: [1, 1, H, W]
 
 
     residual = dq_dt_true + v_delta_q
     residuals.append(residual.flatten())
-    # === ACC ===
-    lat = util_curr.get_lat(level=850)
-    cos_lat = np.cos(np.deg2rad(lat))
-    weights = cos_lat / cos_lat.mean()
-
-    f = v_delta_q
-    o = dq_dt_true
-    f_ano = f - f.mean()
-    o_ano = o - o.mean()
-    numerator = np.sum(weights * f_ano * o_ano)
-    denominator = math.sqrt(np.sum(weights * f_ano ** 2)) * math.sqrt(np.sum(weights * o_ano ** 2))
-    acc = numerator / denominator
-    acc_list.append(acc)
-
-    lon = util_curr.get_lon(level=850)
-    lat = util_curr.get_lat(level=850)
-    if time_index == 98:
-        q_hour = q_curr + v_delta_q * 3600
-        draw(q_hour, lon=lon, lat=lat, scale=1, title="q_hour")
-        draw(q_next, lon=lon, lat=lat, scale=1, title="q_next")
-
-residuals_all = np.concatenate(residuals)
-rmse = np.sqrt(np.mean(residuals_all ** 2))
-bias = np.mean(residuals_all)
-mean_acc = np.mean(acc_list)
-
-print("RMSE:", rmse)
-print("Bias:", bias)
-print("Mean ACC:", mean_acc)
 
 
-plt.figure(figsize=(8, 5))
-plt.hist(residuals_all, bins=100, color='steelblue', edgecolor='black')
-plt.title("Histogram of Residuals: $drho/dt_{true} - drho/dt_{exp}$", fontsize=14)
-plt.xlabel("Residual Value", fontsize=12)
-plt.ylabel("Frequency", fontsize=12)
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+
+q_pre_np = np.stack(q_hour_list, axis=0)   # shape: [N, 240, 121]
+q_next_np = np.stack(q_next_list, axis=0)
+q_pre_tensor = torch.from_numpy(q_pre_np[:, None, :, :]).float()
+q_next_tensor = torch.from_numpy(q_next_np[:, None, :, :]).float()
+acc_result = weighted_acc_torch_channels(q_pre_tensor, q_next_tensor)
+rmse = weighted_rmse_torch(q_pre_tensor, q_next_tensor)
+print("acc_result:", acc_result)
+print("rmse:", rmse)
+# residuals_all = np.concatenate(residuals)
+# plt.figure(figsize=(8, 5))
+# plt.hist(residuals_all, bins=100, color='steelblue', edgecolor='black')
+# plt.title("Histogram of Residuals: $drho/dt_{true} - drho/dt_{exp}$", fontsize=14)
+# plt.xlabel("Residual Value", fontsize=12)
+# plt.ylabel("Frequency", fontsize=12)
+# plt.grid(True)
+# plt.tight_layout()
+# plt.show()
