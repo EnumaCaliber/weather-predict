@@ -26,6 +26,7 @@ for time_index in range(0,100,2):
 
     ##########u_advection##########
     dwu_dx = util_curr.d_x(level=850, wind_type ="wu")
+    dw = util_curr.d_x(level=925, wind_type="w")
     dwv_dy = util_curr.d_y(level=850, wind_type ="wv")
     dww_dz = util_curr.d_z(level=[850,925], wind_type ="ww")
     w_advection = -(dwu_dx + dwv_dy + dww_dz)

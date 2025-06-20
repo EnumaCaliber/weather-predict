@@ -151,6 +151,8 @@ class get_point_parameters:
             wind = self.get_wind_v(level=level)
         elif wind_type == "w":
             wind = self.get_wind_w(level=level)
+            print(wind)
+            print("=============")
         elif wind_type == "p":
             wind = self.get_true_pressure(level=level)
             print("pressure")
