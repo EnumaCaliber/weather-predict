@@ -142,7 +142,7 @@ class get_point_parameters:
         return w
 
     # lon
-    def d_x(self, level, wind_type):
+    def d_x(self, level, wind_type, order = 4):
 
         lon_dis = self.get_lon_distance(level=level)
         if wind_type == "u":
@@ -169,12 +169,23 @@ class get_point_parameters:
             wind = self.get_rho(level=level) * self.get_wind_u(level=level)
 
         dx = np.zeros_like(wind)
-        dx = (np.roll(wind, -1, axis=0) - np.roll(wind, 1, axis=0)) / (2 * lon_dis)
+
+        #
+        # high order
+        if order == 4:
+            dx[2:-2, :] = (- wind[4:, :] + 8 * wind[3:-1, :] - 8 * wind[1:-3, :] + wind[0:-4, :]) / (12 * lon_dis)
+            # 边界点使用二阶中心差分补充
+            dx[1, :] = (wind[2, :] - wind[0, :]) / (2 * lon_dis)
+            dx[0, :] = (wind[1, :] - wind[0, :]) / lon_dis
+            dx[-2, :] = (wind[-1, :] - wind[-3, :]) / (2 * lon_dis)
+            dx[-1, :] = (wind[-1, :] - wind[-2, :]) / lon_dis
+        elif order == 2:
+            dx = (np.roll(wind, -1, axis=0) - np.roll(wind, 1, axis=0)) / (2 * lon_dis)
         print("lon_dis:f{}", lon_dis)
         return dx
 
     # lat
-    def d_y(self, level, wind_type):
+    def d_y(self, level, wind_type,order = 4):
         lat_dis = self.get_lat_distance(level=level)
         if wind_type == "u":
             wind = self.get_wind_u(level=level)
@@ -196,12 +207,20 @@ class get_point_parameters:
         elif wind_type == "vrho":
             wind = self.get_rho(level=level) * self.get_wind_v(level=level)
         dy = np.zeros_like(wind)
-        # 中心差分（内部点）
-        dy[:, 1:-1] = (wind[:, 2:] - wind[:, :-2]) / (2 * lat_dis)
-        # 前向差分（南边界）
-        dy[:, 0] = (wind[:, 1] - wind[:, 0]) / lat_dis
-        # 后向差分（北边界）
-        dy[:, -1] = (wind[:, -1] - wind[:, -2]) / lat_dis
+        if order == 4:
+            dy[:, 2:-2] = (- wind[:, 4:] + 8 * wind[:, 3:-1] - 8 * wind[:, 1:-3] + wind[:, 0:-4]) / (12 * lat_dis)
+            # 边界点使用二阶中心差分
+            dy[:, 1] = (wind[:, 2] - wind[:, 0]) / (2 * lat_dis)
+            dy[:, 0] = (wind[:, 1] - wind[:, 0]) / lat_dis
+            dy[:, -2] = (wind[:, -1] - wind[:, -3]) / (2 * lat_dis)
+            dy[:, -1] = (wind[:, -1] - wind[:, -2]) / lat_dis
+        elif order == 2:
+            # 中心差分（内部点）
+            dy[:, 1:-1] = (wind[:, 2:] - wind[:, :-2]) / (2 * lat_dis)
+            # 前向差分（南边界）
+            dy[:, 0] = (wind[:, 1] - wind[:, 0]) / lat_dis
+            # 后向差分（北边界）
+            dy[:, -1] = (wind[:, -1] - wind[:, -2]) / lat_dis
         return dy
 
     # this level should be two level [level1, level2]
@@ -249,20 +268,36 @@ class get_point_parameters:
         dz = (wind2 - wind1) / high_diff
         return dz
 
-    def dd_x(self, dx, level):
+    def dd_x(self, dx, level,order = 4):
         lon_dis = self.get_lon_distance(level=level)
         ddx = np.zeros_like(dx)
-        ddx = (np.roll(dx, -1, axis=0) - np.roll(dx, 1, axis=0)) / (2 * lon_dis)
+        if order == 4:
+            ddx[2:-2, :] = (- dx[4:, :] + 8 * dx[3:-1, :] - 8 * dx[1:-3, :] + dx[0:-4, :]) / (12 * lon_dis)
+            # 边界点使用二阶中心差分补充
+            ddx[1, :] = (dx[2, :] - dx[0, :]) / (2 * lon_dis)
+            ddx[0, :] = (dx[1, :] - dx[0, :]) / lon_dis
+            ddx[-2, :] = (dx[-1, :] - dx[-3, :]) / (2 * lon_dis)
+            ddx[-1, :] = (dx[-1, :] - dx[-2, :]) / lon_dis
+        elif order == 2:
+            ddx = (np.roll(dx, -1, axis=0) - np.roll(dx, 1, axis=0)) / (2 * lon_dis)
         return ddx
 
-    def dd_y(self, dy, level):
+    def dd_y(self, dy, level,order = 4):
         lat_dis = self.get_lat_distance(level=level)
         ddy = np.zeros_like(dy)
-        ddy[:, 1:-1] = (dy[:, 2:] - dy[:, :-2]) / (2 * lat_dis)
-        # 前向差分（南边界）
-        ddy[:, 0] = (dy[:, 1] - dy[:, 0]) / lat_dis
-        # 后向差分（北边界）
-        ddy[:, -1] = (dy[:, -1] - dy[:, -2]) / lat_dis
+        if order == 4:
+            ddy[:, 2:-2] = (- dy[:, 4:] + 8 * dy[:, 3:-1] - 8 * dy[:, 1:-3] + dy[:, 0:-4]) / (12 * lat_dis)
+            # 边界点使用二阶中心差分
+            ddy[:, 1] = (dy[:, 2] - dy[:, 0]) / (2 * lat_dis)
+            ddy[:, 0] = (dy[:, 1] - dy[:, 0]) / lat_dis
+            ddy[:, -2] = (dy[:, -1] - dy[:, -3]) / (2 * lat_dis)
+            ddy[:, -1] = (dy[:, -1] - dy[:, -2]) / lat_dis
+        elif order == 2:
+            ddy[:, 1:-1] = (dy[:, 2:] - dy[:, :-2]) / (2 * lat_dis)
+            # 前向差分（南边界）
+            ddy[:, 0] = (dy[:, 1] - dy[:, 0]) / lat_dis
+            # 后向差分（北边界）
+            ddy[:, -1] = (dy[:, -1] - dy[:, -2]) / lat_dis
         return ddy
 
     # du1 low level du2 high level
@@ -334,14 +369,15 @@ class get_point_parameters:
         z_lower = self.ds.sel(level=level_lower)["geopotential"].values / self.g
         d_eta_dz = (eta_upper - eta_lower) / (z_upper - z_lower)
         dp_dz = (ps - top_model) * d_eta_dz
-        dp_dz = np.where(ps >= level * 100, dp_dz, np.nan)
+        # dp_dz = np.where(ps > level * 100, dp_dz, np.nan)
+        dp_dz = (ps >= level * 100).astype(float) * dp_dz
         return dp_dz
 
     def get_radius_effect(self, level):
 
         ds = self.ds.sel(level=level)
         u = ds["u_component_of_wind"].values
-        v = ds["u_component_of_wind"].values
+        v = ds["v_component_of_wind"].values
         ps = ds["geopotential"].values / self.g
         R = radius + ps
         return (u ** 2 + v ** 2) / R
@@ -383,3 +419,9 @@ class get_point_parameters:
         dp_dz = delta_p / delta_z  # shape: (lon, lat)
 
         return dp_dz
+
+
+    def get_surface_pressure(self, level):
+        ds = self.ds.sel(level=level)
+        ps = ds["surface_pressure"].values
+        return ps

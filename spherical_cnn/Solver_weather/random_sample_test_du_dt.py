@@ -57,7 +57,10 @@ for time_index in range(0,100,2):
     ##########diffusion##########
 
     ##########dudt##########
+
     du_dt_exp = u_advection + PGF + coriolis + diffusion
+    ps = util_curr.get_surface_pressure(level=850)
+    du_dt_exp = (ps >= level * 100).astype(float) * du_dt_exp
     ##########dudt##########
 
     ##########dudt true##########
@@ -105,7 +108,7 @@ rmse = weighted_rmse_torch(u_pre_tensor, u_next_tensor)
 print("acc_result:", acc_result)
 print("rmse:", rmse)
 # # === 汇总 ===
-# residuals_all = np.concatenate(residuals)
+residuals_all = np.concatenate(residuals)
 # rmse = np.sqrt(np.mean(residuals_all ** 2))
 # mean_bias = np.mean(residuals_all)
 # avg_acc = np.mean(acc_list)
@@ -116,14 +119,14 @@ print("rmse:", rmse)
 #
 #
 #
-# mean_bias = np.mean(residuals_all)
+mean_bias = np.mean(residuals_all)
 # print("RMSE:", rmse)
 # print("Mean Bias:", mean_bias)
-# plt.figure(figsize=(8, 5))
-# plt.hist(residuals_all, bins=100, color='steelblue', edgecolor='black')
-# plt.title("Histogram of Residuals: $du/dt_{true} - du/dt_{exp}$", fontsize=14)
-# plt.xlabel("Residual Value", fontsize=12)
-# plt.ylabel("Frequency", fontsize=12)
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
+plt.figure(figsize=(8, 5))
+plt.hist(residuals_all, bins=100, color='steelblue', edgecolor='black')
+plt.title("Histogram of Residuals: $du/dt_{true} - du/dt_{exp}$", fontsize=14)
+plt.xlabel("Residual Value", fontsize=12)
+plt.ylabel("Frequency", fontsize=12)
+plt.grid(True)
+plt.tight_layout()
+plt.show()
