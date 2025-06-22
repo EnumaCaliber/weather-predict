@@ -11,7 +11,7 @@ import math
 
 
 time = ds.time.values
-level = 850
+level = 500
 diffusion_coefficient_flat = 10e-5
 diffusion_coefficient_vertical = 1
 residuals = []
@@ -29,43 +29,43 @@ for time_index in range(0,100,2):
 
 
     ##########u_advection##########
-    duu_dx = util_curr.d_x(level=850, wind_type ="uu")
-    duv_dy = util_curr.d_y(level=850, wind_type ="uv")
-    duw_dz = util_curr.d_z(level=[850,975], wind_type ="uw")
+    duu_dx = util_curr.d_x(level=level, wind_type ="uu")
+    duv_dy = util_curr.d_y(level=level, wind_type ="uv")
+    duw_dz = util_curr.d_z(level=[level,level + 50], wind_type ="uw")
     u_advection = -(duu_dx + duv_dy + duw_dz)
     ##########u_advection##########
 
     ##########PGF##########
-    dp_dx = util_curr.d_x(level=850, wind_type ="p")
-    rho = util_curr.get_rho(level=850)
+    dp_dx = util_curr.d_x(level=level, wind_type ="p")
+    rho = util_curr.get_rho(level=level)
     PGF = -( 1 / rho) * dp_dx
     ##########PGF##########
 
     ##########coriolis_force##########
-    coriolis = util_curr.get_u_coriolis_force(level=850)
+    coriolis = util_curr.get_u_coriolis_force(level=level)
     ##########coriolis_force##########
 
     ##########diffusion##########
-    du_dx = util_curr.d_x(level=850, wind_type="u")
-    du_dy = util_curr.d_y(level=850, wind_type="u")
-    du_dz = util_curr.d_z(level=[850, 875], wind_type="u")
-    du_dz_2 = util_curr.d_z(level=[850, 900], wind_type="u")
-    du_ddx = util_curr.dd_x(dx=du_dx, level=850)
-    du_ddy = util_curr.dd_y(dy=du_dy, level=850)
-    du_ddz = util_curr.dd_z(level=[850, 875], du1=du_dz, du2=du_dz_2)
+    du_dx = util_curr.d_x(level=level, wind_type="u")
+    du_dy = util_curr.d_y(level=level, wind_type="u")
+    du_dz = util_curr.d_z(level=[level, level + 50], wind_type="u")
+    du_dz_2 = util_curr.d_z(level=[level + 50, level + 100], wind_type="u")
+    du_ddx = util_curr.dd_x(dx=du_dx, level=level)
+    du_ddy = util_curr.dd_y(dy=du_dy, level=level)
+    du_ddz = util_curr.dd_z(level=[level, level+50], du1=du_dz, du2=du_dz_2)
     diffusion = diffusion_coefficient_flat * (du_ddx + du_ddy) + diffusion_coefficient_vertical * du_ddz
     ##########diffusion##########
 
     ##########dudt##########
 
     du_dt_exp = u_advection + PGF + coriolis + diffusion
-    ps = util_curr.get_surface_pressure(level=850)
+    ps = util_curr.get_surface_pressure(level=level)
     du_dt_exp = (ps >= level * 100).astype(float) * du_dt_exp
     ##########dudt##########
 
     ##########dudt true##########
-    u_curr = util_curr.get_wind_u(level=850)
-    u_next = util_next.get_wind_u(level=850)
+    u_curr = util_curr.get_wind_u(level=level)
+    u_next = util_next.get_wind_u(level=level)
     ##########dudt true##########
 
 
@@ -86,8 +86,8 @@ for time_index in range(0,100,2):
 
 
     ##########high different ######
-    high_1 = util_curr.get_high_meter(level=850)
-    high_2 = util_curr.get_high_meter(level=925)
+    high_1 = util_curr.get_high_meter(level=level)
+    high_2 = util_curr.get_high_meter(level=level + 50)
     # print(high_1 - high_2)
 
 
