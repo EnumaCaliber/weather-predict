@@ -10,11 +10,11 @@ from pic_util import *
 file_path = "era5_day_2021-01-01.nc"
 ds = xr.open_dataset(file_path)
 
-u = ds['u_component_of_wind'].sel(level=500).values  # shape: (24, lat, lon)
+u = ds['u_component_of_wind'].sel(level=500).values
 T_old, lat, lon = u.shape
-dt = 3600  # time step = 1 hour
+dt = 3600
 
-# === Compute du/dt at each time step ===
+
 du_dt = np.zeros_like(u)
 du_dt[:-1] = (u[1:] - u[:-1]) / dt
 du_dt[-1] = du_dt[-2]
@@ -33,11 +33,10 @@ def integrate_from_velocity(du_dt_interp: np.ndarray, u0: np.ndarray, dt: float)
     return u_reconstructed
 
 
-# === Define time grid ===
+
 t_old = np.linspace(0, 23, 24)  # hourly
 t_new = np.linspace(0, 23, (24 - 1) * 6 + 1)  # every 10 min
 
-# === Hermite interpolation for u(t), then differentiate ===
 du_dt_interp = np.zeros((len(t_new), lat, lon), dtype=np.float32)
 
 for i in range(lat):
@@ -50,7 +49,7 @@ for i in range(lat):
         spline = CubicHermiteSpline(t_old, dudt_series, np.zeros_like(dudt_series))
         du_dt_interp[:, i, j] = spline(t_new)
 
-# === Integrate du/dt to get u(t) ===
+
 u0 = u[0]  # initial condition
 u_reconstructed = np.zeros((len(t_new) + 1, lat, lon), dtype=np.float32)
 u_reconstructed[0] = u0
@@ -58,7 +57,7 @@ u_reconstructed[0] = u0
 integrate_from_velocity = integrate_from_velocity(du_dt_interp,u0, 600)
 
 
-# === Draw images ===
+
 lon_vals = ds['longitude'].values
 lat_vals = ds['latitude'].values
 
