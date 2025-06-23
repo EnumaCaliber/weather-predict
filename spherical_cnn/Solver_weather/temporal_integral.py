@@ -1,67 +1,79 @@
 import xarray as xr
 import numpy as np
-from scipy.interpolate import interp1d
-
-from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels,weighted_rmse_torch
+from scipy.interpolate import CubicHermiteSpline
+from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
 from spherical_cnn.Solver_weather.weather_util import get_point_parameters
 import torch
+from pic_util import *
 
+# === Load data ===
 file_path = "era5_day_2021-01-01.nc"
 ds = xr.open_dataset(file_path)
 
-
 u = ds['u_component_of_wind'].sel(level=500).values  # shape: (24, lat, lon)
 T_old, lat, lon = u.shape
+dt = 3600  # time step = 1 hour
+
+# === Compute du/dt at each time step ===
+du_dt = np.zeros_like(u)
+du_dt[:-1] = (u[1:] - u[:-1]) / dt
+du_dt[-1] = du_dt[-2]
+
+def integrate_from_velocity(du_dt_interp: np.ndarray, u0: np.ndarray, dt: float) -> np.ndarray:
+
+    T = du_dt_interp.shape[0]
+    u_reconstructed = np.zeros((T, *du_dt_interp.shape[1:]), dtype=du_dt_interp.dtype)
+    u_reconstructed[0] = u0
+
+    for t in range(1, T):
+        m0 = du_dt_interp[t - 1]
+        m1 = du_dt_interp[t]
+        u_reconstructed[t] = u_reconstructed[t - 1] + dt * ((7 / 12) * m0 + (5 / 12) * m1)
+
+    return u_reconstructed
 
 
-dt = 3600
-du_dt = (u[1:, :, :] - u[:-1, :, :]) / dt
+# === Define time grid ===
+t_old = np.linspace(0, 23, 24)  # hourly
+t_new = np.linspace(0, 23, (24 - 1) * 6 + 1)  # every 10 min
 
-
-t_old = np.linspace(0, 22, 23)
-t_new = np.linspace(0, 22, (23 - 1) * 6 + 1)
-
-
+# === Hermite interpolation for u(t), then differentiate ===
 du_dt_interp = np.zeros((len(t_new), lat, lon), dtype=np.float32)
 
 for i in range(lat):
     for j in range(lon):
-        series = du_dt[:, i, j]
-        if np.any(np.isnan(series)):
-            series = np.nan_to_num(series, nan=0.0)
-        f = interp1d(t_old, series, kind='cubic')
-        du_dt_interp[:, i, j] = f(t_new)
+        u_series = u[:, i, j]
+        dudt_series = du_dt[:, i, j]
+        if np.any(np.isnan(u_series)) or np.any(np.isnan(dudt_series)):
+            u_series = np.nan_to_num(u_series, nan=0.0)
+            dudt_series = np.nan_to_num(dudt_series, nan=0.0)
+        spline = CubicHermiteSpline(t_old, dudt_series, np.zeros_like(dudt_series))
+        du_dt_interp[:, i, j] = spline(t_new)
 
-u0 = du_dt_interp[0]
-
-
-u_reconstructed = np.zeros((du_dt_interp.shape[0] + 1, *du_dt_interp.shape[1:]), dtype=np.float32)
+# === Integrate du/dt to get u(t) ===
+u0 = u[0]  # initial condition
+u_reconstructed = np.zeros((len(t_new) + 1, lat, lon), dtype=np.float32)
 u_reconstructed[0] = u0
 
-for t in range(1, u_reconstructed.shape[0]):
-    u_reconstructed[t] = u_reconstructed[t - 1] + 600 * du_dt_interp[t - 1]
-
-from pic_util import *
+integrate_from_velocity = integrate_from_velocity(du_dt_interp,u0, 600)
 
 
-lon = ds['longitude'].values
-lat = ds['latitude'].values
+# === Draw images ===
+lon_vals = ds['longitude'].values
+lat_vals = ds['latitude'].values
 
+draw(integrate_from_velocity[-1], lon=lon_vals, lat=lat_vals, scale=1, title="hermite u")
+draw(u[-1], lon=lon_vals, lat=lat_vals, scale=1, title="u_true")
 
+# === Evaluate accuracy ===
+u_pre_tensor = torch.from_numpy(integrate_from_velocity[-1]).unsqueeze(0).unsqueeze(0)
+u_true_tensor = torch.from_numpy(u[-1]).unsqueeze(0).unsqueeze(0)
 
-draw(u_reconstructed[-1], lon=lon, lat=lat,scale=1,title="u_integer")
-draw(u[-1], lon=lon, lat=lat,scale=1,title="u_true")
-
-
-
-
-u_pre_tensor = torch.from_numpy(u_reconstructed[-1]).unsqueeze(0).unsqueeze(0)
-u_next_tensor = torch.from_numpy(u[-1]).unsqueeze(0).unsqueeze(0)
+acc_result = weighted_acc_torch_channels(u_pre_tensor, u_true_tensor)
+rmse = weighted_rmse_torch(u_pre_tensor, u_true_tensor)
 
 
 
-acc_result = weighted_acc_torch_channels(u_pre_tensor, u_next_tensor)
-rmse = weighted_rmse_torch(u_pre_tensor, u_next_tensor)
 
-print(acc_result)
-print(rmse)
+print("ACC:", acc_result)
+print("RMSE:", rmse)
