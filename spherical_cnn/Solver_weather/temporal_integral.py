@@ -28,7 +28,7 @@ def integrate_from_velocity(du_dt_interp: np.ndarray, u0: np.ndarray, dt: float)
     for t in range(1, T):
         m0 = du_dt_interp[t - 1]
         m1 = du_dt_interp[t]
-        u_reconstructed[t] = u_reconstructed[t - 1] + dt * ((7 / 12) * m0 + (5 / 12) * m1)
+        u_reconstructed[t] = u_reconstructed[t - 1] + 600 * ((7 / 12) * m0 + (5 / 12) * m1)
 
     return u_reconstructed
 
