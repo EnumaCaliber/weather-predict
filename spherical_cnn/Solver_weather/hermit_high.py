@@ -3,10 +3,16 @@ import numpy as np
 from scipy.interpolate import CubicHermiteSpline
 import matplotlib.pyplot as plt
 file_path = "era5_day_2021-01-01.nc"
-# 读取 ERA5 数据
+
 ds = xr.open_dataset(file_path)
 time_curr = ds.time.values[0]
 ds_time = ds.sel(time=time_curr)
+
+
+varnames = ["u_component_of_wind", "v_component_of_wind",
+            "temperature", "specific_humidity",
+            "geopotential"]
+
 
 def compute_du_dz(z, u):
     du_dz = np.zeros_like(u)
@@ -70,12 +76,6 @@ def build_all_interp_funcs(z3d, ds_time, varnames):
                 funcs[v][i, j] = make_1d_spline(z_col, y_col)
     return funcs
 
-
-
-
-z_t = ds_time["geopotential"].values / 9.80665   # (37, 240, 121)
-u_t = ds_time["u_component_of_wind"].values      # (37, 240, 121)
-
 def interpolate_at_height(all_funcs, z_query):
     lon, lat = all_funcs[varnames[0]].shape
     out = {v: np.full((lon, lat), np.nan) for v in varnames}
@@ -87,9 +87,12 @@ def interpolate_at_height(all_funcs, z_query):
     return out
 
 
-varnames = ["u_component_of_wind", "v_component_of_wind",
-            "temperature", "specific_humidity",
-            "geopotential"]
+
+
+# Test
+z_t = ds_time["geopotential"].values / 9.80665   # (37, 240, 121)
+u_t = ds_time["u_component_of_wind"].values      # (37, 240, 121)
+
 all_funcs = build_all_interp_funcs(z_t, ds_time, varnames)
 z_q = 1000.0
 result_1000m = interpolate_at_height(all_funcs, z_q)
