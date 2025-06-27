@@ -25,7 +25,7 @@ def compute_du_dz(z, u):
 
     return du_dz
 
-def get_u_z_function(z_vals, u_vals):
+def make_1d_spline(z_vals, u_vals):
     valid = (~np.isnan(z_vals)) & (~np.isnan(u_vals))
     if np.sum(valid) < 2:
         return lambda z_query: np.full_like(z_query, np.nan)
@@ -54,32 +54,46 @@ def build_interp_funcs(z, u):
         for j in range(lat):
             z_profile = z[:, i, j]
             u_profile = u[:, i, j]
-            u_interp_funcs[i, j] = get_u_z_function(z_profile, u_profile)
+            u_interp_funcs[i, j] = make_1d_spline(z_profile, u_profile)
 
     return u_interp_funcs
+
+def build_all_interp_funcs(z3d, ds_time, varnames):
+    lev, lon, lat = z3d.shape
+    funcs = {v: np.empty((lon, lat), dtype=object) for v in varnames}
+
+    for i in range(lon):
+        for j in range(lat):
+            z_col = z3d[:, i, j]
+            for v in varnames:
+                y_col = ds_time[v].values[:, i, j]
+                funcs[v][i, j] = make_1d_spline(z_col, y_col)
+    return funcs
+
+
+
 
 z_t = ds_time["geopotential"].values / 9.80665   # (37, 240, 121)
 u_t = ds_time["u_component_of_wind"].values      # (37, 240, 121)
 
-z_t_850 = ds_time.sel(level=850)["geopotential"].values / 9.80665
-z_flat = z_t_850.flatten()
+def interpolate_at_height(all_funcs, z_query):
+    lon, lat = all_funcs[varnames[0]].shape
+    out = {v: np.full((lon, lat), np.nan) for v in varnames}
 
-plt.hist(z_flat, bins=100)
-plt.title("850 hPa Altitude Histogram")
-plt.xlabel("Height (m)")
-plt.ylabel("Frequency")
-plt.grid(True)
-plt.show()
+    for i in range(lon):
+        for j in range(lat):
+            for v in varnames:
+                out[v][i, j] = all_funcs[v][i, j](z_query)
+    return out
 
 
-u_interp_funcs = build_interp_funcs(z_t, u_t)
+varnames = ["u_component_of_wind", "v_component_of_wind",
+            "temperature", "specific_humidity",
+            "geopotential"]
+all_funcs = build_all_interp_funcs(z_t, ds_time, varnames)
+z_q = 1000.0
+result_1000m = interpolate_at_height(all_funcs, z_q)
+u_1000  = result_1000m["u_component_of_wind"]
+temp_1000 = result_1000m["temperature"]
+print(temp_1000)
 
-z_query = 1000.0
-lon, lat = z_t.shape[1], z_t.shape[2]
-u_at = np.empty((lon, lat))
-
-for i in range(lon):
-    for j in range(lat):
-        u_at[i, j] = u_interp_funcs[i, j](z_query)
-
-print(u_at)
