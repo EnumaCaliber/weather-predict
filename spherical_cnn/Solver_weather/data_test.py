@@ -6,7 +6,7 @@ import numpy as np
 file_path = "era5_day_2021-01-01.nc"
 # 读取 ERA5 数据
 ds = xr.open_dataset(file_path)
-ds_850 = ds.sel(level=850)
+ds_850 = ds
 
 # 数据
 u = ds_850["u_component_of_wind"].values
