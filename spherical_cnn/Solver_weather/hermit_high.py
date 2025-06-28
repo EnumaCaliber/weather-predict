@@ -11,7 +11,7 @@ ds_time = ds.sel(time=time_curr)
 
 varnames = ["u_component_of_wind", "v_component_of_wind",
             "temperature", "specific_humidity",
-            "geopotential"]
+            "geopotential","level"]
 
 
 def compute_du_dz(z, u):
@@ -72,7 +72,10 @@ def build_all_interp_funcs(z3d, ds_time, varnames):
         for j in range(lat):
             z_col = z3d[:, i, j]
             for v in varnames:
-                y_col = ds_time[v].values[:, i, j]
+                if v == "level":
+                    y_col = ds_time.level.values  # shape (37,)
+                else:
+                    y_col = ds_time[v].values[:, i, j]
                 funcs[v][i, j] = make_1d_spline(z_col, y_col)
     return funcs
 
@@ -91,12 +94,16 @@ def interpolate_at_height(all_funcs, z_query):
 
 # Test
 z_t = ds_time["geopotential"].values / 9.80665   # (37, 240, 121)
-u_t = ds_time["u_component_of_wind"].values      # (37, 240, 121)
+z_q = 1000.0    # (37, 240, 121)
 
 all_funcs = build_all_interp_funcs(z_t, ds_time, varnames)
-z_q = 1000.0
+
 result_1000m = interpolate_at_height(all_funcs, z_q)
 u_1000  = result_1000m["u_component_of_wind"]
+v_1000 = result_1000m["v_component_of_wind"]
 temp_1000 = result_1000m["temperature"]
-print(temp_1000)
+p_1000m = result_1000m["level"]
+print(p_1000m)
+
+
 
