@@ -1,13 +1,16 @@
 import xarray as xr
 import numpy as np
 from scipy.interpolate import CubicHermiteSpline
-import matplotlib.pyplot as plt
+from pic_util import *
+from spherical_cnn.Solver_weather.random_sample_test_du_dt import level
+
 file_path = "era5_day_2021-01-01.nc"
 
 ds = xr.open_dataset(file_path)
 time_curr = ds.time.values[0]
+time_next = ds.time.values[1]
 ds_time = ds.sel(time=time_curr)
-
+ds_next_time = ds.sel(time=time_next)
 
 varnames = ["u_component_of_wind", "v_component_of_wind",
             "temperature", "specific_humidity","vertical_velocity",
@@ -130,71 +133,87 @@ EARTH_RADIUS_M = 6370000
 lon = ds_time["longitude"].values
 delta_lon = lon[1] - lon[0]
 lon_dis = abs(delta_lon * 2 * np.pi * EARTH_RADIUS_M / 360)
-
-
-
-# meter
 lat = ds_time["latitude"].values
 delta_lat = lat[1] - lat[0]
 lat_dis = delta_lat * 2 * np.pi * EARTH_RADIUS_M / 360
 
-##########u_advection##########
-duu_dx = (np.roll(u_1000 * u_1000, -1, axis=0) - np.roll(u_1000 * u_1000, 1, axis=0)) / (2 * lon_dis)
 
-duv_dy = np.zeros_like(v_1000)
-duv_dy[:, 1:-1] = ((u_1000 * v_1000)[:, 2:] - (u_1000 * v_1000)[:, :-2]) / (2 * lat_dis)
-# 前向差分（南边界）
-duv_dy[:, 0] = ((u_1000 * v_1000)[:, 1] - (u_1000 * v_1000)[:, 0]) / lat_dis
-# 后向差分（北边界）
-duv_dy[:, -1] = ((u_1000 * v_1000)[:, -1] - (u_1000 * v_1000)[:, -2]) / lat_dis
+def compute_du_dt(u, v, w, temp, sp, p, z, lon, lat):    # meter
 
-duw_dz = u_1000* dw_dz_1000 + w_1000 * du_dz_1000
-u_advection = - (duu_dx + duv_dy + duw_dz)
-##########u_advection##########
+    ##########u_advection##########
+    duu_dx = (np.roll(u_1000 * u_1000, -1, axis=0) - np.roll(u_1000 * u_1000, 1, axis=0)) / (2 * lon_dis)
 
+    duv_dy = np.zeros_like(v_1000)
+    duv_dy[:, 1:-1] = ((u_1000 * v_1000)[:, 2:] - (u_1000 * v_1000)[:, :-2]) / (2 * lat_dis)
+    # 前向差分（南边界）
+    duv_dy[:, 0] = ((u_1000 * v_1000)[:, 1] - (u_1000 * v_1000)[:, 0]) / lat_dis
+    # 后向差分（北边界）
+    duv_dy[:, -1] = ((u_1000 * v_1000)[:, -1] - (u_1000 * v_1000)[:, -2]) / lat_dis
 
-dp_dx = (np.roll(p_1000m, -1, axis=0) - np.roll(p_1000m, 1, axis=0)) / (2 * lon_dis)
-rho = p_1000m / (287 * temp_1000 * (1 + 0.61 * sp_1000m))
-PGF = -( 1 / rho) * dp_dx
-
-du_dx = (np.roll(u_1000, -1, axis=0) - np.roll(u_1000, 1, axis=0)) / (2 * lon_dis)
-du_dy = np.zeros_like(u_1000)
-du_dy[:, 1:-1] = (u_1000[:, 2:] - u_1000[:, :-2]) / (2 * lat_dis)
-# 前向差分（南边界）
-du_dy[:, 0] = (u_1000[:, 1] - u_1000[:, 0]) / lat_dis
-# 后向差分（北边界）
-du_dy[:, -1] = (u_1000[:, -1] - u_1000[:, -2]) / lat_dis
-
-du_dz = du_dz_1000
-du_ddz = du_ddz_100
-du_ddx = (np.roll(du_dx, -1, axis=0) - np.roll(du_dx, 1, axis=0)) / (2 * lon_dis)
-du_ddy = np.zeros_like(u_1000)
-du_ddy[:, 1:-1] = (du_dy[:, 2:] - du_dy[:, :-2]) / (2 * lat_dis)
-# 前向差分（南边界）
-du_dy[:, 0] = (du_dy[:, 1] - du_dy[:, 0]) / lat_dis
-# 后向差分（北边界）
-du_dy[:, -1] = (du_dy[:, -1] - du_dy[:, -2]) / lat_dis
-diffusion = 10e-5 * (du_ddx + du_ddy) + 1 * du_ddz
+    duw_dz = u_1000* dw_dz_1000 + w_1000 * du_dz_1000
+    u_advection = - (duu_dx + duv_dy + duw_dz)
+    ##########u_advection##########
 
 
-lon_size = ds_time["longitude"].values.size
-lat = ds_time["latitude"].values
+    dp_dx = (np.roll(p_1000m, -1, axis=0) - np.roll(p_1000m, 1, axis=0)) / (2 * lon_dis)
+    rho = p_1000m / (287 * temp_1000 * (1 + 0.61 * sp_1000m))
+    PGF = -( 1 / rho) * dp_dx
+
+    du_dx = (np.roll(u_1000, -1, axis=0) - np.roll(u_1000, 1, axis=0)) / (2 * lon_dis)
+    du_dy = np.zeros_like(u_1000)
+    du_dy[:, 1:-1] = (u_1000[:, 2:] - u_1000[:, :-2]) / (2 * lat_dis)
+    # 前向差分（南边界）
+    du_dy[:, 0] = (u_1000[:, 1] - u_1000[:, 0]) / lat_dis
+    # 后向差分（北边界）
+    du_dy[:, -1] = (u_1000[:, -1] - u_1000[:, -2]) / lat_dis
+
+    du_dz = du_dz_1000
+    du_ddz = du_ddz_100
+    du_ddx = (np.roll(du_dx, -1, axis=0) - np.roll(du_dx, 1, axis=0)) / (2 * lon_dis)
+    du_ddy = np.zeros_like(u_1000)
+    du_ddy[:, 1:-1] = (du_dy[:, 2:] - du_dy[:, :-2]) / (2 * lat_dis)
+    # 前向差分（南边界）
+    du_dy[:, 0] = (du_dy[:, 1] - du_dy[:, 0]) / lat_dis
+    # 后向差分（北边界）
+    du_dy[:, -1] = (du_dy[:, -1] - du_dy[:, -2]) / lat_dis
+    diffusion = 10e-5 * (du_ddx + du_ddy) + 1 * du_ddz
+
+
+    lon_size = ds_time["longitude"].values.size
+    v = v_1000
+
+    ##########################
+    w = w_1000
+    ##########################
+    cos_alpha = 1
+    sin_alpha = 0
+    omega = 7.2921e-5
+    lat = np.tile(lat[np.newaxis, :], (lon_size, 1))
+    lat_rad = np.deg2rad(lat)
+    fv = 2 * omega * np.sin(lat_rad) * v_1000
+    ew = 2 * omega * np.cos(lat_rad) * w_1000 * cos_alpha
+    fw = 2 * omega * np.sin(lat_rad) * w_1000 * sin_alpha
+    u_coriolis_force = fv + ew + fw
+    du_dt_exp = u_advection + PGF + u_coriolis_force
+    return du_dt_exp
+
+u0 = u_1000
 v = v_1000
-
-##########################
 w = w_1000
-##########################
-cos_alpha = 1
-sin_alpha = 0
-omega = 7.2921e-5
-lat = np.tile(lat[np.newaxis, :], (lon_size, 1))
-lat_rad = np.deg2rad(lat)
-fv = 2 * omega * np.sin(lat_rad) * v_1000
-ew = 2 * omega * np.cos(lat_rad) * w_1000 * cos_alpha
-fw = 2 * omega * np.sin(lat_rad) * w_1000 * sin_alpha
-u_coriolis_force = fv + ew + fw
+temp = temp_1000
+sp = sp_1000m
+p = p_1000m
+z = z_q
+dt = 3600
 
+k1 = compute_du_dt(u0, v, w, temp, sp, p, z, lon, lat)
+k2 = compute_du_dt(u0 + 0.5 * dt * k1, v, w, temp, sp, p, z, lon, lat)
+k3 = compute_du_dt(u0 + 0.5 * dt * k2, v, w, temp, sp, p, z, lon, lat)
+k4 = compute_du_dt(u0 + dt * k3, v, w, temp, sp, p, z, lon, lat)
 
+u_rk4 = u0 + (dt / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
 
-du_dt_exp = u_advection + PGF + u_coriolis_force
-print(du_dt_exp)
+u_next_true = ds_next_time.sel(level=850)["u_component_of_wind"].values
+draw(u_rk4,lon,lat,scale=1)
+draw(u_next_true,lon,lat,scale=1)
+draw(u_1000,lon,lat,scale=1)
