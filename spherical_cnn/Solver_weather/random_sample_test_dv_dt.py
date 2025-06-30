@@ -39,7 +39,8 @@ for time_index in range(0,100,2):
     ##########PGF##########
     dp_dy = util_curr.d_y(level=850, wind_type ="p")
     rho = util_curr.get_rho(level=850)
-    PGF = -( 1 / rho) * dp_dy
+    # PGF = -( 1 / rho) * dp_dy
+    PGF = util_curr.get_geopotential_dy(level=850)
     ##########PGF##########
 
     ##########coriolis_force##########
@@ -79,12 +80,12 @@ for time_index in range(0,100,2):
     v_hour_list.append(v_pre)  # shape: [1, 1, H, W]
     v_next_list.append(v_next)  # shape: [1, 1, H, W]
 
-    # if time_index == 98:
-    #     lon = util_curr.get_lon(level=850)
-    #     lat = util_curr.get_lat(level=850)
-    #     v_hour = v_curr + dv_dt_exp * 3600
-    #     draw(v_next, lon=lon, lat=lat,scale=1,title="v_next")
-    #     draw(v_hour, lon=lon, lat=lat,scale=1,title="v_hour")
+    if time_index == 98:
+        lon = util_curr.get_lon(level=850)
+        lat = util_curr.get_lat(level=850)
+        v_hour = v_curr + dv_dt_exp * 3600
+        draw(v_next, lon=lon, lat=lat,scale=1,title="v_next")
+        draw(v_hour, lon=lon, lat=lat,scale=1,title="v_hour")
 
 residuals_all = np.concatenate(residuals)
 v_pre_np = np.stack(v_hour_list, axis=0)   # shape: [N, 240, 121]

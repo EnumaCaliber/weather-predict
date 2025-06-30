@@ -64,7 +64,8 @@ class get_point_parameters:
         fu = 2 * self.omega * np.sin(lat_rad) * u
         ew = 2 * self.omega * np.cos(lat_rad) * w * self.sin_alpha
         fw = 2 * self.omega * np.sin(lat_rad) * w * self.cos_alpha
-        return (- fu + ew + fw)
+        # return (- fu + ew + fw)
+        return -fu
 
     def get_w_coriolis_force(self, level):
         ds = self.ds.sel(level=level)
@@ -151,16 +152,12 @@ class get_point_parameters:
             wind = self.get_wind_v(level=level)
         elif wind_type == "w":
             wind = self.get_wind_w(level=level)
-            print(wind)
-            print("=============")
         elif wind_type == "p":
             wind = self.get_true_pressure(level=level)
-            print("pressure")
         elif wind_type == "q":
             wind = self.get_specific_humidity(level=level)
         elif wind_type == "uu":
             wind = self.get_wind_u(level=level) * self.get_wind_u(level=level)
-            print("uu")
         elif wind_type == "vu":
             wind = self.get_wind_v(level=level) * self.get_wind_u(level=level)
         elif wind_type == "wu":
@@ -199,7 +196,6 @@ class get_point_parameters:
             wind = self.get_specific_humidity(level=level)
         elif wind_type == "uv":
             wind = self.get_wind_u(level=level) * self.get_wind_v(level=level)
-            print("uv")
         elif wind_type == "vv":
             wind = self.get_wind_v(level=level) * self.get_wind_v(level=level)
         elif wind_type == "wv":
@@ -308,6 +304,19 @@ class get_point_parameters:
         high_diff = self.get_high_diff(level1=level1, level2=level2)
         ddz = (du1 - du2) / (high_diff)
         return ddz
+
+    def dd_z_center(self, levels):
+        low, mid, high = sorted(levels)
+        u_low = self.get_wind_u(level=low)
+        u_mid = self.get_wind_u(level=mid)
+        u_high = self.get_wind_u(level=high)
+        z_low = self.get_high_meter(low)
+        z_mid = self.get_high_meter(mid)
+        z_high = self.get_high_meter(high)
+        dz1 = z_mid - z_low
+        dz2 = z_high - z_mid
+        dz = (dz1 + dz2) / 2
+        return (u_high - 2 * u_mid + u_low) / (dz ** 2)
 
     def get_true_pressure(self, level):
         ds = self.ds.sel(level=level)
@@ -425,3 +434,56 @@ class get_point_parameters:
         ds = self.ds.sel(level=level)
         ps = ds["surface_pressure"].values
         return ps
+
+
+    def get_geopotential_dy(self, level):
+        """
+        计算纬度方向上的地势高度梯度：∂z/∂y，再乘以 -g 得到近似 PGF 项
+        """
+        g = 9.80665  # 重力加速度
+        ds_level = self.ds.sel(level=level)
+
+        geopotential = ds_level["geopotential"].values  # 单位: m^2/s^2
+        height = geopotential / g  # 转换为 m
+
+        lat = ds_level["latitude"].values
+        delta_lat = np.deg2rad(lat[1] - lat[0])  # 纬度间隔，转为弧度
+        R = 6370000  # 地球半径，单位 m
+        dy = delta_lat * R  # 纬向格距，单位 m
+
+        dz_dy = np.zeros_like(height)
+
+        # 中心差分
+        dz_dy[:, 1:-1] = (height[:, 2:] - height[:, :-2]) / (2 * dy)
+        dz_dy[:, 0] = (height[:, 1] - height[:, 0]) / dy
+        dz_dy[:, -1] = (height[:, -1] - height[:, -2]) / dy
+
+        pgf_y = -g * dz_dy
+        return pgf_y  # 单位 m/s^2
+
+    def get_geopotential_dx(self, level):
+        """
+        计算 geopotential height 的经度方向梯度（单位：m/m），考虑纬度引起的格距变化
+        """
+        ds = self.ds.sel(level=level)
+        geopotential = ds["geopotential"].values  # shape: (lon, lat)
+        height = geopotential / self.g  # 转换为位势高度 z，单位 m
+
+        lon = ds["longitude"].values
+        lat = ds["latitude"].values
+        lon_size = len(lon)
+        lat_size = len(lat)
+
+        # 构造每个格点的经向距离（单位：米），考虑纬度变化
+        delta_lon_deg = lon[1] - lon[0]  # 经度间隔（°）
+        lat_rad = np.deg2rad(lat)  # shape: (lat,)
+        dx = delta_lon_deg * (np.pi / 180) * radius  # shape: (lat,)
+        # shape: (lon, lat)
+
+        # 中心差分计算 ∂z/∂x
+        dz_dx = np.zeros_like(height)
+        dz_dx[1:-1, :] = (height[2:, :] - height[:-2, :]) / (2 * dx)
+        dz_dx[0, :] = (height[1, :] - height[0, :]) / dx
+        dz_dx[-1, :] = (height[-1, :] - height[-2, :]) / dx
+
+        return dz_dx  # 单位：m/m
