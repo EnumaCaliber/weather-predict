@@ -61,11 +61,12 @@ for time_index in range(0,100,2):
     ##########dudt##########
     dv_dt_exp = v_advection + PGF + coriolis + diffusion
     ps = util_curr.get_surface_pressure(level=850)
-    dv_dt_exp = (ps >= level * 100).astype(float) * dv_dt_exp
     ##########dudt##########
 
-
-
+    # z_surface = ds_curr.sel(level=1000)["geopotential"].values / 9.80665
+    # z_level = ds_curr.sel(level=level)["geopotential"].values / 9.80665  # shape: (lon, lat)
+    # terrain_mask = (z_level - z_surface) > 200
+    # dv_dt_exp = np.where(terrain_mask, dv_dt_exp, np.nan)
 
     ##########dudt true##########
     v_curr = util_curr.get_wind_v(level=850)

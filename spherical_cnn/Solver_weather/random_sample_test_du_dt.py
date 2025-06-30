@@ -11,7 +11,7 @@ ds = xr.open_dataset(file_path)
 import math
 
 time = ds.time.values
-level = 500
+level = 850
 diffusion_coefficient_flat = 10e-5
 diffusion_coefficient_vertical = 1
 residuals = []
@@ -64,12 +64,17 @@ for time_index in range(0, 100, 2):
 
     du_dt_exp = u_advection + PGF + coriolis + diffusion
     ps = util_curr.get_surface_pressure(level=level)
-    du_dt_exp = (ps >= level * 100).astype(float) * du_dt_exp
+
     ##########dudt##########
+
+    z_surface = ds_curr.sel(level=1000)["geopotential"].values / 9.80665
+    z_level = ds_curr.sel(level=level)["geopotential"].values / 9.80665  # shape: (lon, lat)
+    terrain_mask = (z_level - z_surface) > 200
 
     ##########dudt true##########
     u_curr = util_curr.get_wind_u(level=level)
     u_next = util_next.get_wind_u(level=level)
+    du_dt_exp = np.where(terrain_mask, du_dt_exp, np.nan)
     ##########dudt true##########
 
     u_pre = u_curr + du_dt_exp * 3600
