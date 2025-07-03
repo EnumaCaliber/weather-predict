@@ -178,7 +178,6 @@ class get_point_parameters:
             dx[-1, :] = (wind[-1, :] - wind[-2, :]) / lon_dis
         elif order == 2:
             dx = (np.roll(wind, -1, axis=0) - np.roll(wind, 1, axis=0)) / (2 * lon_dis)
-        print("lon_dis:f{}", lon_dis)
         return dx
 
     # lat
