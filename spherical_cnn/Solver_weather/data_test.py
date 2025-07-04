@@ -23,4 +23,4 @@ lon = ds["longitude"].values  # shape: (64,)
 lat = np.tile(lat[:, np.newaxis], (1, 32))
 po = ds_850["geopotential"].values / 9.8
 
-print(ds["level"].values)
+print(u)

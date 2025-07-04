@@ -6,4 +6,4 @@ file_path = "era5_100_dudt_samples.nc"
 ds = xr.open_dataset(file_path)
 
 
-print(ds.sel(level=850)["u_component_of_wind"].values )
+print(ds.sel(level=850)["vertical_velocity"].values )

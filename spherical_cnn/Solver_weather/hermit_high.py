@@ -36,9 +36,8 @@ def compute_du_dz(z, u):
 
 
 def make_1d_spline(z_vals, u_vals):
-    valid = (~np.isnan(z_vals)) & (~np.isnan(u_vals))
-    z = z_vals[valid]
-    u = u_vals[valid]
+    z = z_vals
+    u = u_vals
     sort_idx = np.argsort(z)
     z = z[sort_idx]
     u = u[sort_idx]
@@ -47,13 +46,13 @@ def make_1d_spline(z_vals, u_vals):
     return spline  # 可调用函数
 
 
-def build_all_interp_funcs(z3d, ds_time, varnames):
-    lev, lon, lat = z3d.shape
+def build_all_interp_funcs(z, ds_time, varnames):
+    lev, lon, lat = z.shape
     funcs = {v: np.empty((lon, lat), dtype=object) for v in varnames}
 
     for i in range(lon):
         for j in range(lat):
-            z_col = z3d[:, i, j]
+            z_col = z[:, i, j]
             for v in varnames:
                 if v == "level":
                     y_col = ds_time.level.values  # shape (37,)
@@ -90,16 +89,20 @@ def differentiate_at_height(all_funcs, z_query, n):
 
 # Test
 z_t = ds_time["geopotential"].values / 9.80665  # (37, 240, 121)
-z_q = 1450  # (37, 240, 121)
-all_funcs = build_all_interp_funcs(z_t, ds_time, varnames)
+z_q = 1000  # (37, 240, 121)
 
+all_funcs = build_all_interp_funcs(z_t, ds_time, varnames)
+next_funcs = build_all_interp_funcs(z_t, ds_next_time, varnames)
 data_1000m = interpolate_at_height(all_funcs, z_q)
+next_data_1000m = interpolate_at_height(next_funcs, z_q)
 grad_1000m = differentiate_at_height(all_funcs, z_q, n=1)
 grad_2_1000m = differentiate_at_height(all_funcs, z_q, n=2)
 
 u_1000 = data_1000m["u_component_of_wind"]
+u_1000_next = next_data_1000m["u_component_of_wind"]
 v_1000 = data_1000m["v_component_of_wind"]
 w_1000 = data_1000m["vertical_velocity"]
+
 temp_1000 = data_1000m["temperature"]
 p_1000 = data_1000m["level"]
 sp_1000 = data_1000m["specific_humidity"]
@@ -117,82 +120,85 @@ lat = ds_time["latitude"].values
 delta_lat = lat[1] - lat[0]
 lat_dis = delta_lat * 2 * np.pi * EARTH_RADIUS_M / 360
 
+u_true = ds_next_time.sel(level=850)["u_component_of_wind"].values
 
-def compute_du_dt(u, v, w, temp, sp, p, z, lon, lat):  # meter
 
+def compute_du_dt():  # meter
+    lat = ds_time["latitude"].values
     ##########u_advection##########
     duu_dx = (np.roll(u_1000 * u_1000, -1, axis=0) - np.roll(u_1000 * u_1000, 1, axis=0)) / (2 * lon_dis)
 
+
     duv_dy = np.zeros_like(v_1000)
     duv_dy[:, 1:-1] = ((u_1000 * v_1000)[:, 2:] - (u_1000 * v_1000)[:, :-2]) / (2 * lat_dis)
-    # 前向差分（南边界）
     duv_dy[:, 0] = ((u_1000 * v_1000)[:, 1] - (u_1000 * v_1000)[:, 0]) / lat_dis
-    # 后向差分（北边界）
     duv_dy[:, -1] = ((u_1000 * v_1000)[:, -1] - (u_1000 * v_1000)[:, -2]) / lat_dis
 
-    duw_dz = u_1000 * dw_dz_1000 + w_1000 * du_dz_1000
+
+    #==========================duw_dz==============
+    duw_dz = du_dz_1000 * w_1000 + dw_dz_1000 * u_1000
+    R = 287.0
+    q = data_1000m["specific_humidity"]  # specific_humidity
+    T = data_1000m["temperature"]
+    P = data_1000m["level"]
+    rho = P / (R * T * (1 + 0.61 * q))
+    duw_dz = - duw_dz / (rho * 9.80665 * 100)
+
+
+    # ==========================duw_dz==============
+
+
     u_advection = - (duu_dx + duv_dy + duw_dz)
     ##########u_advection##########
 
     dp_dx = (np.roll(p_1000, -1, axis=0) - np.roll(p_1000, 1, axis=0)) / (2 * lon_dis)
     rho = p_1000 / (287 * temp_1000 * (1 + 0.61 * sp_1000))
-    PGF = -(1 / rho) * dp_dx
+    pgf = -(1 / rho) * dp_dx
 
     du_dx = (np.roll(u_1000, -1, axis=0) - np.roll(u_1000, 1, axis=0)) / (2 * lon_dis)
     du_dy = np.zeros_like(u_1000)
     du_dy[:, 1:-1] = (u_1000[:, 2:] - u_1000[:, :-2]) / (2 * lat_dis)
-    # 前向差分（南边界）
     du_dy[:, 0] = (u_1000[:, 1] - u_1000[:, 0]) / lat_dis
-    # 后向差分（北边界）
     du_dy[:, -1] = (u_1000[:, -1] - u_1000[:, -2]) / lat_dis
 
-    du_dz = du_dz_1000
     du_ddz = du_ddz_100
     du_ddx = (np.roll(du_dx, -1, axis=0) - np.roll(du_dx, 1, axis=0)) / (2 * lon_dis)
     du_ddy = np.zeros_like(u_1000)
     du_ddy[:, 1:-1] = (du_dy[:, 2:] - du_dy[:, :-2]) / (2 * lat_dis)
-    # 前向差分（南边界）
-    du_dy[:, 0] = (du_dy[:, 1] - du_dy[:, 0]) / lat_dis
-    # 后向差分（北边界）
-    du_dy[:, -1] = (du_dy[:, -1] - du_dy[:, -2]) / lat_dis
+
+    du_ddy[:, 0] = (du_dy[:, 1] - du_dy[:, 0]) / lat_dis
+
+    du_ddy[:, -1] = (du_dy[:, -1] - du_dy[:, -2]) / lat_dis
     diffusion = 10e-5 * (du_ddx + du_ddy) + 1 * du_ddz
 
     lon_size = ds_time["longitude"].values.size
-    v = v_1000
+    lat = ds_time["latitude"].values
 
-    ##########################
-    w = w_1000
-    ##########################
     cos_alpha = 1
     sin_alpha = 0
     omega = 7.2921e-5
-    lat = np.tile(lat[np.newaxis, :], (lon_size, 1))
-    lat_rad = np.deg2rad(lat)
-    fv = 2 * omega * np.sin(lat_rad) * v
-    ew = 2 * omega * np.cos(lat_rad) * w * cos_alpha
-    fw = 2 * omega * np.sin(lat_rad) * w * sin_alpha
+    lat_2d = np.tile(lat[np.newaxis, :], (lon_size, 1))
+    lat_rad = np.deg2rad(lat_2d)
+    fv = 2 * omega * np.sin(lat_rad) * v_1000
+    ew = 2 * omega * np.cos(lat_rad) * w_1000 * cos_alpha
+    fw = 2 * omega * np.sin(lat_rad) * w_1000 * sin_alpha
     u_coriolis_force = fv + ew + fw
-    du_dt_exp = u_advection + PGF + u_coriolis_force + diffusion
+
+    du_dt_exp = u_advection + pgf + u_coriolis_force + diffusion
+
     return du_dt_exp
 
 
-u0 = u_1000
-v = v_1000
-w = w_1000
-temp = temp_1000
-sp = sp_1000
-p = p_1000
-z = z_q
-dt = 3600
+du_dt = compute_du_dt()
+u_pre = u_1000 + du_dt * 3600
+draw(u_pre, lon, lat, scale=1)
+draw(u_1000_next, lon, lat, scale=1)
 
-k1 = compute_du_dt(u0, v, w, temp, sp, p, z, lon, lat)
-k2 = compute_du_dt(u0 + 0.5 * dt * k1, v, w, temp, sp, p, z, lon, lat)
-k3 = compute_du_dt(u0 + 0.5 * dt * k2, v, w, temp, sp, p, z, lon, lat)
-k4 = compute_du_dt(u0 + dt * k3, v, w, temp, sp, p, z, lon, lat)
-
-u_rk4 = u0 + (dt / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
-
-u_next_true = ds_next_time.sel(level=850)["u_component_of_wind"].values
-draw(u_rk4, lon, lat, scale=1)
-draw(u_next_true, lon, lat, scale=1)
-draw(u_1000, lon, lat, scale=1)
+from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
+import torch
+u_pre_tensor = torch.from_numpy(u_pre).float().unsqueeze(0).unsqueeze(0)
+u_next_tensor = torch.from_numpy(u_1000_next).float().unsqueeze(0).unsqueeze(0)
+acc_result = weighted_acc_torch_channels(u_pre_tensor, u_next_tensor)
+rmse = weighted_rmse_torch(u_pre_tensor, u_next_tensor)
+print("acc_result:", acc_result)
+print("rmse:", rmse)
