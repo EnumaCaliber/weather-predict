@@ -54,18 +54,18 @@ u0 = u[0]  # initial condition
 u_reconstructed = np.zeros((len(t_new) + 1, lat, lon), dtype=np.float32)
 u_reconstructed[0] = u0
 
-integrate_from_velocity = integrate_from_velocity(du_dt_interp,u0, 600)
+u_reconstructed = integrate_from_velocity(du_dt_interp,u0, 600)
 
 
 
 lon_vals = ds['longitude'].values
 lat_vals = ds['latitude'].values
 
-draw(integrate_from_velocity[-1], lon=lon_vals, lat=lat_vals, scale=1, title="hermite u")
+draw(u_reconstructed[-1], lon=lon_vals, lat=lat_vals, scale=1, title="hermite u")
 draw(u[-1], lon=lon_vals, lat=lat_vals, scale=1, title="u_true")
 
 # === Evaluate accuracy ===
-u_pre_tensor = torch.from_numpy(integrate_from_velocity[-1]).unsqueeze(0).unsqueeze(0)
+u_pre_tensor = torch.from_numpy(u_reconstructed[-1]).unsqueeze(0).unsqueeze(0)
 u_true_tensor = torch.from_numpy(u[-1]).unsqueeze(0).unsqueeze(0)
 
 acc_result = weighted_acc_torch_channels(u_pre_tensor, u_true_tensor)

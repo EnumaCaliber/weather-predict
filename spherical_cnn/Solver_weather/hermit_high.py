@@ -62,7 +62,7 @@ def build_all_interp_funcs(z, ds_time, varnames):
     return funcs
 
 
-def interpolate_at_height(all_funcs, z_query):
+def interpolate_at_height(all_funcs, z_query,varnames):
     lon, lat = all_funcs[varnames[0]].shape
     out = {v: np.full((lon, lat), np.nan) for v in varnames}
 
@@ -73,7 +73,7 @@ def interpolate_at_height(all_funcs, z_query):
     return out
 
 
-def differentiate_at_height(all_funcs, z_query, n):
+def differentiate_at_height(all_funcs, z_query, n,varnames):
     lon, lat = all_funcs[varnames[0]].shape
     out = {v: np.full((lon, lat), np.nan) for v in varnames}
 
@@ -87,16 +87,22 @@ def differentiate_at_height(all_funcs, z_query, n):
     return out
 
 
+
+du_dt_list = []
+
+
+
+
 # Test
 z_t = ds_time["geopotential"].values / 9.80665  # (37, 240, 121)
 z_q = 1000  # (37, 240, 121)
 
 all_funcs = build_all_interp_funcs(z_t, ds_time, varnames)
 next_funcs = build_all_interp_funcs(z_t, ds_next_time, varnames)
-data_1000m = interpolate_at_height(all_funcs, z_q)
-next_data_1000m = interpolate_at_height(next_funcs, z_q)
-grad_1000m = differentiate_at_height(all_funcs, z_q, n=1)
-grad_2_1000m = differentiate_at_height(all_funcs, z_q, n=2)
+data_1000m = interpolate_at_height(all_funcs, z_q,varnames)
+next_data_1000m = interpolate_at_height(next_funcs, z_q,varnames)
+grad_1000m = differentiate_at_height(all_funcs, z_q, n=1, varnames=varnames)
+grad_2_1000m = differentiate_at_height(all_funcs, z_q, n=2,varnames=varnames)
 
 u_1000 = data_1000m["u_component_of_wind"]
 u_1000_next = next_data_1000m["u_component_of_wind"]
@@ -123,8 +129,7 @@ lat_dis = delta_lat * 2 * np.pi * EARTH_RADIUS_M / 360
 u_true = ds_next_time.sel(level=850)["u_component_of_wind"].values
 
 
-def compute_du_dt():  # meter
-    lat = ds_time["latitude"].values
+def compute_du_dt(ds_time):  # meter
     ##########u_advection##########
     duu_dx = (np.roll(u_1000 * u_1000, -1, axis=0) - np.roll(u_1000 * u_1000, 1, axis=0)) / (2 * lon_dis)
 
@@ -189,16 +194,21 @@ def compute_du_dt():  # meter
     return du_dt_exp
 
 
-du_dt = compute_du_dt()
-u_pre = u_1000 + du_dt * 3600
-draw(u_pre, lon, lat, scale=1)
-draw(u_1000_next, lon, lat, scale=1)
+# du_dt = compute_du_dt()
+# u_pre = u_1000 + du_dt * 3600
+# draw(u_pre, lon, lat, scale=1)
+# draw(u_1000_next, lon, lat, scale=1)
+#
+# from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
+# import torch
+# u_pre_tensor = torch.from_numpy(u_pre).float().unsqueeze(0).unsqueeze(0)
+# u_next_tensor = torch.from_numpy(u_1000_next).float().unsqueeze(0).unsqueeze(0)
+# acc_result = weighted_acc_torch_channels(u_pre_tensor, u_next_tensor)
+# rmse = weighted_rmse_torch(u_pre_tensor, u_next_tensor)
+# print("acc_result:", acc_result)
+# print("rmse:", rmse)
 
-from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
-import torch
-u_pre_tensor = torch.from_numpy(u_pre).float().unsqueeze(0).unsqueeze(0)
-u_next_tensor = torch.from_numpy(u_1000_next).float().unsqueeze(0).unsqueeze(0)
-acc_result = weighted_acc_torch_channels(u_pre_tensor, u_next_tensor)
-rmse = weighted_rmse_torch(u_pre_tensor, u_next_tensor)
-print("acc_result:", acc_result)
-print("rmse:", rmse)
+
+for time_index in range(0, 24):
+    ds_curr = ds.sel(time=ds.time.values[time_index])
+    du_dt = compute_du_dt(ds_curr)
