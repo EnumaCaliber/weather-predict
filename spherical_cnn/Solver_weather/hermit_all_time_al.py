@@ -39,6 +39,25 @@ for i in range(lon_n):
 u_pre_tensor = torch.from_numpy(u_pred).unsqueeze(1).float()
 u_true_tensor = torch.from_numpy(u_true).unsqueeze(1).float()
 
-acc = weighted_acc_torch_channels(u_pre_tensor, u_true_tensor)
-rmse = weighted_rmse_torch(u_pre_tensor, u_true_tensor)
 
+
+rmse_list = []
+
+lat_mask = (lat >= -40) & (lat <= 40)
+lat_indices = np.where(lat_mask)[0]
+
+u_pre_tensor_eq = u_pre_tensor[:, :, :, lat_indices]
+u_true_tensor_eq = u_true_tensor[:, :, :, lat_indices]
+
+for i in range(u_pre_tensor_eq.shape[0]):  # 24 个时间步
+    rmse_i = weighted_rmse_torch(u_pre_tensor_eq[i:i+1], u_true_tensor_eq[i:i+1])
+    rmse_list.append(rmse_i.item())
+
+acc = weighted_acc_torch_channels(u_pre_tensor_eq, u_true_tensor_eq)
+
+print("赤道 ±20° 纬度带的每小时 RMSE:")
+print(rmse_list) # 转成 float 放入列表
+
+print("赤道 ±20° 纬度带的每小时 Acc:")
+
+print(acc.squeeze().tolist())
