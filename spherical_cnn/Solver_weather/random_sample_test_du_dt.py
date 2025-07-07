@@ -11,7 +11,7 @@ ds = xr.open_dataset(file_path)
 import math
 
 time = ds.time.values
-level = 850
+level = 100
 diffusion_coefficient_flat = 10e-5
 diffusion_coefficient_vertical = 1
 residuals = []
@@ -77,7 +77,7 @@ for time_index in range(0, 100, 2):
     du_dt_exp = np.where(terrain_mask, du_dt_exp, np.nan)
     ##########dudt true##########
 
-    u_pre = u_curr + du_dt_exp * 3600
+    u_pre = u_curr + du_dt_exp * 3600 * 3
     u_hour_list.append(u_pre)  # shape: [1, 1, H, W]
     u_next_list.append(u_next)  # shape: [1, 1, H, W]
 

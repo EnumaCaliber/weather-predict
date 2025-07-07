@@ -13,7 +13,7 @@ u = ds_850["u_component_of_wind"].values
 v = ds_850["v_component_of_wind"].values
 T= ds_850["temperature"].values
 p = ds["surface_pressure"].values
-
+l = ds_850["level"].values
 w = ds["vertical_velocity"].values #用来处理垂直的求导
 
 # 纬度 南北
@@ -23,4 +23,4 @@ lon = ds["longitude"].values  # shape: (64,)
 lat = np.tile(lat[:, np.newaxis], (1, 32))
 po = ds_850["geopotential"].values / 9.8
 
-print(u)
+print(l)

@@ -10,7 +10,7 @@ ds = xr.open_dataset(file_path)
 import math
 
 time = ds.time.values
-level = 850
+level = 200
 diffusion_coefficient_flat = 10e-5
 diffusion_coefficient_vertical = 1
 residuals = []
@@ -98,9 +98,9 @@ acc_list = []
 rmse_list = []
 u_pred = u_reconstructed
 
-lat_vals = ds["latitude"].values
-lat_mask = (lat_vals >= -40) & (lat_vals <= 40)
-lat_indices = np.where(lat_mask)[0]
+# lat_vals = ds["latitude"].values
+# lat_mask = (lat_vals >= -20) & (lat_vals <= 20)
+# lat_indices = np.where(lat_mask)[0]
 
 
 
@@ -108,11 +108,11 @@ lat_indices = np.where(lat_mask)[0]
 for t in range(0, 24, 1):
     pred = torch.from_numpy(u_pred[t][None, None]).float()
     true = torch.from_numpy(u_next_np[t][None, None]).float()
-    pred_eq = pred[:, :, :, lat_indices]  # 只取赤道区域
-    true_eq = true[:, :, :, lat_indices]
+    # pred_eq = pred[:, :, :, lat_indices]  # 只取赤道区域
+    # true_eq = true[:, :, :, lat_indices]
 
-    acc_t = weighted_acc_torch_channels(pred_eq, true_eq).item()
-    rmse_t = weighted_rmse_torch(pred_eq, true_eq).item()
+    acc_t = weighted_acc_torch_channels(pred, true).item()
+    rmse_t = weighted_rmse_torch(pred, true).item()
 
     acc_list.append(acc_t)
     rmse_list.append(rmse_t)
