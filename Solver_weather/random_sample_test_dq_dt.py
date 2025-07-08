@@ -1,7 +1,5 @@
 import xarray as xr
-from spherical_cnn.Solver_weather.weather_util import get_point_parameters
-import numpy as np
-import matplotlib.pyplot as plt
+from Solver_weather.weather_util import get_point_parameters
 from pic_util import *
 import math
 

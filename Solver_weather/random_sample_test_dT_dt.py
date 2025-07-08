@@ -1,11 +1,8 @@
 import xarray as xr
 
-from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
-from spherical_cnn.Solver_weather.weather_util import get_point_parameters
-import numpy as np
-import matplotlib.pyplot as plt
+from Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
+from Solver_weather.weather_util import get_point_parameters
 from pic_util import *
-import math
 import torch
 
 file_path = "era5_100_dudt_samples.nc"

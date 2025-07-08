@@ -1,41 +1,53 @@
 import xarray as xr
 import torch
-from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
-from spherical_cnn.Solver_weather.weather_util import get_point_parameters
-import numpy as np
-import matplotlib.pyplot as plt
+from Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
+from Solver_weather.weather_util import get_point_parameters
 from pic_util import *
+import metpy.calc as mpcalc
+from metpy.units import units
+
 
 file_path = "era5_100_dudt_samples.nc"
 ds = xr.open_dataset(file_path)
-import math
 
 time = ds.time.values
 level = 100
-diffusion_coefficient_flat = 10e-5
+diffusion_coefficient_flat = 10e2
 diffusion_coefficient_vertical = 1
 residuals = []
 acc_list = []
 u_hour_list = []
 u_next_list = []
 for time_index in range(0, 100, 2):
+
     time_curr = ds.time.values[time_index]
     time_next = ds.time.values[time_index + 1]
     ds_curr = ds.sel(time=time_curr)
     ds_next = ds.sel(time=time_next)
     util_curr = get_point_parameters(ds_curr)
     util_next = get_point_parameters(ds_next)
+    ds_metpy_cur = ds.metpy.parse_cf(ds).sel(time=time_curr)
 
     ##########u_advection##########
-    duu_dx = util_curr.d_x(level=level, wind_type="uu")
-    duv_dy = util_curr.d_y(level=level, wind_type="uv")
-    duw_dz = util_curr.d_z(level=[level, level + 50], wind_type="uw")
-    u_advection = -(duu_dx + duv_dy + duw_dz)
+    # duu_dx = util_curr.d_x(level=level, wind_type="uu")
+    # duv_dy = util_curr.d_y(level=level, wind_type="uv")
+    # duw_dz = util_curr.d_z(level=[level, level + 50], wind_type="uw")
+    # u_advection = -(duu_dx + duv_dy + duw_dz)
+    u = ds_metpy_cur.sel(level=level)["u_component_of_wind"]
+    v = ds_metpy_cur.sel(level=level)["v_component_of_wind"]
+    u_advection_metpy = mpcalc.advection(u, u=u, v=v, x_dim=-2, y_dim=-1, vertical_dim=-3).metpy.magnitude
+    u_advection = u_advection_metpy.copy()
+    u_advection[0, :] /= 1000
+    u_advection[-1, :] /= 1000
+
+    # 左右列（去掉已经除过的角点）
+    u_advection[1:-1, 0] /= 1000
+    u_advection[1:-1, -1] /= 1000
     ##########u_advection##########
 
     ##########PGF##########
-    dp_dx = util_curr.d_x(level=level, wind_type="p")
-    rho = util_curr.get_rho(level=level)
+    # dp_dx = util_curr.d_x(level=level, wind_type="p")
+    # rho = util_curr.get_rho(level=level)
     # PGF = -(1 / rho) * dp_dx
 
     dz_dx = util_curr.get_geopotential_dx(level=level)  # shape: (lon, lat)
@@ -77,7 +89,7 @@ for time_index in range(0, 100, 2):
     du_dt_exp = np.where(terrain_mask, du_dt_exp, np.nan)
     ##########dudt true##########
 
-    u_pre = u_curr + du_dt_exp * 3600 * 3
+    u_pre = u_curr + du_dt_exp * 3600
     u_hour_list.append(u_pre)  # shape: [1, 1, H, W]
     u_next_list.append(u_next)  # shape: [1, 1, H, W]
 

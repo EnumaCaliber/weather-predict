@@ -1,7 +1,5 @@
-import numpy as np
 import torch
-import matplotlib.pyplot as plt
-from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
+from Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
 from scipy.interpolate import CubicHermiteSpline
 from pic_util import *
 import xarray as xr

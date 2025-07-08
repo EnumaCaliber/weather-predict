@@ -1,8 +1,6 @@
 import xarray as xr
-import numpy as np
 from scipy.interpolate import CubicHermiteSpline
-from spherical_cnn.Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
-from spherical_cnn.Solver_weather.weather_util import get_point_parameters
+from Solver_weather.utils.weighted_acc_rmse import weighted_acc_torch_channels, weighted_rmse_torch
 import torch
 from pic_util import *
 

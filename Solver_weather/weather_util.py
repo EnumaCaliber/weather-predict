@@ -1,6 +1,7 @@
 import xarray as xr
 from pic_util import *
-
+import metpy.calc as mpcalc
+from metpy.units import units
 # constant define
 R = 287.0
 P = 85000
@@ -13,20 +14,32 @@ class get_point_parameters:
         if isinstance(file_path, str):
             self.file_path = file_path
             self.ds = xr.open_dataset(file_path)
+            self.metpy_ds = self.ds.metpy.parse_cf(self.ds)
         else:
             self.ds = file_path
+            self.metpy_ds = self.ds.metpy.parse_cf(self.ds)
         self.cos_alpha = 1
         self.sin_alpha = 0
         self.omega = 7.2921e-5
         self.g = 9.80665
 
+    # def get_rho(self, level):
+    #     ds = self.ds.sel(level=level)
+    #     q = ds["specific_humidity"].values  # specific_humidity
+    #     T = ds["temperature"].values
+    #     P = self.get_true_pressure(level=level)
+    #     rho = P / (R * T * (1 + 0.61 * q))
+    #     return rho
+
     def get_rho(self, level):
+        from metpy.calc import density
         ds = self.ds.sel(level=level)
-        q = ds["specific_humidity"].values  # specific_humidity
-        T = ds["temperature"].values
-        P = self.get_true_pressure(level=level)
-        rho = P / (R * T * (1 + 0.61 * q))
-        return rho
+        ds_metpy = self.metpy_ds.sel(level=level)
+        q = ds_metpy["specific_humidity"]
+        T = ds_metpy["temperature"].metpy.convert_units('degC')
+
+        rho = density(level * units.hPa,T,q * units('g/kg'))
+        return rho.metpy.magnitude
 
     def get_t_virtual(self, level):
         ds = self.ds.sel(level=level)
@@ -35,22 +48,32 @@ class get_point_parameters:
         T_virtual = T * (1 + 0.61 * q)
         return T_virtual
 
+    # def get_u_coriolis_force(self, level):
+    #     ds = self.ds.sel(level=level)
+    #     lon_size = ds["longitude"].values.size
+    #     lat = ds["latitude"].values
+    #     v = ds["v_component_of_wind"].values
+    #
+    #     ##########################
+    #     w = self.get_wind_w(level=level)
+    #     ##########################
+    #
+    #     lat = np.tile(lat[np.newaxis, :], (lon_size, 1))
+    #     lat_rad = np.deg2rad(lat)
+    #     fv = 2 * self.omega * np.sin(lat_rad) * v
+    #     ew = 2 * self.omega * np.cos(lat_rad) * w * self.cos_alpha
+    #     fw = 2 * self.omega * np.sin(lat_rad) * w * self.sin_alpha
+    #     return fv
+
     def get_u_coriolis_force(self, level):
         ds = self.ds.sel(level=level)
-        lon_size = ds["longitude"].values.size
-        lat = ds["latitude"].values
         v = ds["v_component_of_wind"].values
-
-        ##########################
-        w = self.get_wind_w(level=level)
-        ##########################
-
-        lat = np.tile(lat[np.newaxis, :], (lon_size, 1))
-        lat_rad = np.deg2rad(lat)
-        fv = 2 * self.omega * np.sin(lat_rad) * v
-        ew = 2 * self.omega * np.cos(lat_rad) * w * self.cos_alpha
-        fw = 2 * self.omega * np.sin(lat_rad) * w * self.sin_alpha
-        return fv + ew + fw
+        lon_size = ds["longitude"].values.size
+        ds_metpy  = self.metpy_ds.sel(level=level)
+        lat = ds_metpy['latitude'].values * units.degrees
+        coriolis = mpcalc.coriolis_parameter(lat).magnitude
+        coriolis = np.tile(coriolis[np.newaxis, :], (lon_size, 1))
+        return coriolis * v
 
     def get_v_coriolis_force(self, level):
         ds = self.ds.sel(level=level)
