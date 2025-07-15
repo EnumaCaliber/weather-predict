@@ -6,41 +6,8 @@ def draw_clean(pic, lon=None, lat=None, scale=1e6, title="",
                cmap='bwr', figsize=(14, 5), save_path=None,
                vmin=None, vmax=None, units="",
                fig=None, ax=None):
-    """
-    简化版绘图函数 - 纯净显示，无等值线、网格、统计信息等
 
-    Parameters:
-    -----------
-    pic : np.ndarray
-        要绘制的数据数组 (2D)
-    lon : np.ndarray, optional
-        经度数组，可以是1D或2D
-    lat : np.ndarray, optional
-        纬度数组，可以是1D或2D
-    scale : float, default=1e6
-        数据缩放因子
-    title : str, default=""
-        图表标题
-    cmap : str, default='bwr'
-        颜色映射
-    figsize : tuple, default=(14, 5)
-        图表大小
-    save_path : str, optional
-        保存路径
-    vmin, vmax : float, optional
-        颜色范围
-    units : str, default=""
-        数据单位
-    fig, ax : matplotlib objects, optional
-        现有的图表对象
 
-    Returns:
-    --------
-    fig, ax : matplotlib objects
-        图表对象
-    """
-
-    # 数据验证
     if not isinstance(pic, np.ndarray):
         raise TypeError("pic must be a numpy array")
 
@@ -50,10 +17,10 @@ def draw_clean(pic, lon=None, lat=None, scale=1e6, title="",
     if np.all(np.isnan(pic)):
         raise ValueError("pic contains only NaN values")
 
-    # 处理数据
+
     data = pic * scale
 
-    # 处理无效值
+
     if np.any(np.isinf(data)) or np.any(np.isnan(data)):
         print("Warning: Data contains NaN or infinite values")
         data = np.nan_to_num(data, nan=0.0,

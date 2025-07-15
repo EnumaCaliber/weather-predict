@@ -12,7 +12,7 @@
   <component name="PyNamespacePackagesService">
     <option name="namespacePackageFolders">
       <list>
-        <option value="$MODULE_DIR$/weather_metpy" />
+        <option value="$MODULE_DIR$/weather_solver_p_axis" />
       </list>
     </option>
   </component>
